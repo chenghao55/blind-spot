@@ -44,7 +44,7 @@ const CONFIG = Object.freeze({
  viewRooms:1.5, sightRays:190, interactionRange:48,
  magSize:6, startingAmmo:0, pistolPickupAmmo:6, pistolDamage:25, pistolCooldown:.2, pistolSpread:2*Math.PI/180,
  reloadTime:1.5, healTime:2, healAmount:30, knifeDamage:35, knifeRange:45,
- knifeArc:70*Math.PI/180, knifeCooldown:.6, ammoChance:.55, medChance:.35, pistolChance:.10,
+ knifeArc:70*Math.PI/180, knifeCooldown:.6, knifeStealthKill:true, ammoChance:.55, medChance:.35, pistolChance:.10,
  ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4, searchableFurnitureChance:.25,
  enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
@@ -135,7 +135,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Ctrl 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Ctrl 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';sound.pause();keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -306,7 +306,13 @@ function attack(){
   p.knifeTimer=CONFIG.knifeCooldown;game.effects.push({type:'knife',x:p.x,y:p.y,angle:p.facing,time:.16});
   // Sweep rays to each candidate's near surface; nearest obstacle/actor wins.
   const candidates=enemies.filter(e=>distance(p,e)<=CONFIG.knifeRange+e.radius&&Math.abs(angleDiff(Math.atan2(e.y-p.y,e.x-p.x),p.facing))<=CONFIG.knifeArc/2).sort((a,b)=>distance(p,a)-distance(p,b));
-  const e=candidates.find(e=>cast(p,Math.atan2(e.y-p.y,e.x-p.x),CONFIG.knifeRange,boxes,enemies).target===e);if(e)damageEnemy(e,CONFIG.knifeDamage);
+  const e=candidates.find(e=>cast(p,Math.atan2(e.y-p.y,e.x-p.x),CONFIG.knifeRange,boxes,enemies).target===e);
+  if(e){
+   // Evaluate the guard's view before damage can turn it toward the attacker.
+   const stealth=CONFIG.knifeStealthKill&&!inEnemyVision(e,p,boxes);
+   damageEnemy(e,stealth?e.hp:CONFIG.knifeDamage);
+   if(stealth)notice('近戰偷襲 — 一擊必殺');
+  }
  }
 }
 function hurtPlayer(amount){const p=game.player;p.hp=Math.max(0,p.hp-amount);p.hurt=.18;if(p.hp===0)finish(false);}
@@ -315,10 +321,15 @@ function updateAction(dt){const p=game.player,a=p.action;if(!a)return;a.elapsed+
  else{p.medkits--;p.hp=Math.min(CONFIG.hp,p.hp+CONFIG.healAmount);}cancelAction();
 }
 // 6. Room-bound guards, directional detection and continuous aiming checks.
+function inEnemyVision(e,target,boxes){
+ return distance(e,target)<=CONFIG.room*CONFIG.enemyViewRooms
+  &&Math.abs(angleDiff(Math.atan2(target.y-e.y,target.x-e.x),e.angle))<=CONFIG.enemyViewAngle/2
+  &&lineClear(e,target,boxes);
+}
 function updateEnemies(dt,boxes){
  const f=floorNow(),p=game.player;
  for(const e of f.enemies){if(e.hp<=0)continue;e.flash=Math.max(0,e.flash-dt);e.cooldown=Math.max(0,e.cooldown-dt);
-  const angle=Math.atan2(p.y-e.y,p.x-e.x),sees=(e.alerted||(distance(p,e)<=CONFIG.room*CONFIG.enemyViewRooms&&Math.abs(angleDiff(angle,e.angle))<=CONFIG.enemyViewAngle/2))&&lineClear(e,p,boxes);
+  const angle=Math.atan2(p.y-e.y,p.x-e.x),sees=inEnemyVision(e,p,boxes)||(e.alerted&&lineClear(e,p,boxes));
   if(sees){e.state='aim';e.angle=angle;e.aim+=dt;if(e.aim>=CONFIG.enemyAimTime&&e.cooldown<=0){
    e.cooldown=CONFIG.enemyInterval;e.flash=CONFIG.flashLife;
    sound.play('shot',CONFIG.enemyShotVolume);
