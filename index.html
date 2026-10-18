@@ -44,22 +44,24 @@ const CONFIG = Object.freeze({
  viewRooms:1.5, sightRays:190, interactionRange:48,
  magSize:6, startingAmmo:0, pistolPickupAmmo:6, pistolDamage:25, pistolCooldown:.2, pistolSpread:2*Math.PI/180,
  reloadTime:1.5, healTime:2, healAmount:30, knifeDamage:35, knifeRange:45,
- knifeArc:70*Math.PI/180, knifeCooldown:.6, knifeStealthKill:true, ammoChance:.55, medChance:.35, pistolChance:.10,
- ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4, searchableFurnitureChance:.25,
+ knifeArc:70*Math.PI/180, knifeCooldown:.6, knifeStealthKill:true, ammoChance:.35, medChance:.20, pistolChance:.10, emptyChance:.35,
+ ammoMin:1, ammoMax:2, furnitureMin:2, furnitureMax:4, searchableFurnitureChance:.25,
  furniturePlacementAttempts:50, furnitureGap:26, furnitureWallMargin:26,
  furnitureAnchorClearance:20, doorwayCoverChance:.8, enemySpawnSamples:48,
  safeStairArrivalRooms:true, enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
- enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
+ enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:1,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:30,
  bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
  colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
   furniture:'#8c6238',furnitureEdge:'#e0b786',furnitureDetail:'#d3a372'}),
  roomFont:16, stairFont:26, exitFont:14, minimapSize:180,
- shotVolume:.65, enemyShotVolume:.35, reloadVolume:.55, knifeVolume:.6, maxEffectVoices:8
+ shotVolume:.65, enemyShotVolume:.35, reloadVolume:.55, knifeVolume:.6, maxEffectVoices:8,
+ footstepStride:26, hearingRooms:1.2, footstepOcclusionStrength:.5,
+ footstepHintLife:.7, footstepHintRadius:62, footstepHintSectors:8, footstepHintArc:24*Math.PI/180
 });
 const $=id=>document.getElementById(id), canvas=$('world'), ctx=canvas.getContext('2d');
 const TAU=Math.PI*2, SIZE=CONFIG.grid*CONFIG.room, TOTAL_ROOMS=CONFIG.floors*CONFIG.grid**2;
-const game={mode:'MENU',floors:[],currentFloor:CONFIG.floors,runTime:0,player:null,stats:null,effects:[],toast:null,interactable:null};
+const game={mode:'MENU',floors:[],currentFloor:CONFIG.floors,runTime:0,player:null,stats:null,effects:[],footsteps:[],toast:null,interactable:null};
 const keys=new Set(), mouse={x:0,y:0}, camera={x:0,y:0};
 // Embedded MP3 data is decoded after a user gesture. Audio is optional: unsupported
 // browsers or decode failures never block controls, timers, or combat.
@@ -136,7 +138,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。開局房間與每次下樓抵達的房間不生成敵人。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。開局房間與每次下樓抵達的房間不生成敵人。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次，也可能沒有物資。<br>近戰從敵人視野外命中可一擊必殺。<br>角色周圍的短弧提示視野外腳步的大致方位；守衛移動才出現，家具會減弱提示，牆壁與關門會隔絕。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';sound.pause();keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -262,7 +264,7 @@ function buildBuilding(){
     if(cover>best){position=q;best=cover;}
    }
    if(!position)continue;
-   f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,...position,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0});
+   f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,...position,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0,stepDistance:rand(0,CONFIG.footstepStride)});
   }
  }
  const errors=validateBuilding(floors,spawn);if(errors.length)throw new Error(errors.join(', '));
@@ -270,7 +272,7 @@ function buildBuilding(){
 }
 function startGame(){
  sound.stopAll();
- const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=CONFIG.floors;game.runTime=0;game.effects=[];game.toast=null;game.interactable=null;
+ const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=CONFIG.floors;game.runTime=0;game.effects=[];game.footsteps=[];game.toast=null;game.interactable=null;
  game.player={x:spawn.x,y:spawn.y,radius:CONFIG.playerRadius,facing:-Math.PI/2,hp:CONFIG.hp,mag:0,reserveAmmo:CONFIG.startingAmmo,medkits:0,hasPistol:false,weapon:'knife',action:null,knifeTimer:0,pistolTimer:0,flash:0,hurt:0,sprinting:false,dash:null,dashCooldown:0};
  game.stats={kills:0,visitedRoomIds:new Set([`${CONFIG.floors}:${spawn.roomId}`]),lowestFloor:CONFIG.floors};keys.clear();resetCamera();discoverMap(blockers(floorNow()));resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
 }
@@ -292,10 +294,12 @@ function interactionCandidates(){
 }
 function loot(o){
  if(o.searched)return;o.searched=true;const p=game.player;
- const r=Math.random()*(CONFIG.ammoChance+CONFIG.medChance+(p.hasPistol?0:CONFIG.pistolChance));
+ const pistolWeight=p.hasPistol?0:CONFIG.pistolChance;
+ const r=Math.random()*(CONFIG.ammoChance+CONFIG.medChance+pistolWeight+CONFIG.emptyChance);
  if(r<CONFIG.ammoChance){const n=int(CONFIG.ammoMin,CONFIG.ammoMax);p.reserveAmmo+=n;notice(`找到 ${n} 發備用子彈`);}
  else if(r<CONFIG.ammoChance+CONFIG.medChance){p.medkits++;notice('找到 1 份補血藥');}
- else{p.hasPistol=true;p.mag=Math.min(CONFIG.magSize,CONFIG.pistolPickupAmmo);notice(`找到手槍（含 ${p.mag} 發子彈）— 按 V 切換`);}
+ else if(r<CONFIG.ammoChance+CONFIG.medChance+pistolWeight){p.hasPistol=true;p.mag=Math.min(CONFIG.magSize,CONFIG.pistolPickupAmmo);notice(`找到手槍（含 ${p.mag} 發子彈）— 按 V 切換`);}
+ else notice('沒有找到物資');
 }
 function interact(){
  const candidate=interactionCandidates()[0];if(!candidate)return;const o=candidate.obj;
@@ -307,7 +311,7 @@ function interact(){
   const landings=[o.toPosition,...[0,Math.PI/2,Math.PI,-Math.PI/2].map(a=>({x:anchor.x+Math.cos(a)*28,y:anchor.y+Math.sin(a)*28}))];
   const landing=landings.find(q=>canStand(q,game.player.radius,boxes,destination.enemies));
   if(!landing){notice('樓梯另一端有人擋路');return;}
-  sound.stopAll();game.currentFloor=o.toFloor;Object.assign(game.player,landing);cancelAction();game.player.dash=null;game.player.sprinting=false;game.effects=[];game.stats.lowestFloor=Math.min(game.stats.lowestFloor,game.currentFloor);resetCamera();notice(`已抵達 ${game.currentFloor}F`);
+  sound.stopAll();game.currentFloor=o.toFloor;Object.assign(game.player,landing);cancelAction();game.player.dash=null;game.player.sprinting=false;game.effects=[];game.footsteps=[];game.stats.lowestFloor=Math.min(game.stats.lowestFloor,game.currentFloor);resetCamera();notice(`已抵達 ${game.currentFloor}F`);
  }else if(candidate.type==='exit')finish(true);
 }
 // 4. Actual visibility polygon: uniform rays plus exact blocker corner rays.
@@ -377,6 +381,29 @@ function inEnemyVision(e,target,boxes){
   &&Math.abs(angleDiff(Math.atan2(target.y-e.y,target.x-e.x),e.angle))<=CONFIG.enemyViewAngle/2
   &&lineClear(e,target,boxes);
 }
+function footstepCue(e,boxes){
+ const p=game.player,range=CONFIG.room*CONFIG.hearingRooms,length=distance(p,e);
+ if(length>=range)return null;
+ const angle=Math.atan2(e.y-p.y,e.x-p.x),occluded=!lineClear(p,e,boxes);
+ // Cues describe footsteps hidden from the main view, not enemy outlines.
+ if(!occluded&&length<=CONFIG.room*CONFIG.viewRooms&&Math.abs(angleDiff(angle,p.facing))<=CONFIG.viewAngle/2)return null;
+ // Furniture weakens the cue; walls and closed doors isolate rooms entirely.
+ const f=floorNow(),hard=[...f.walls,...f.doors.filter(d=>!d.open).map(d=>d.bounds)];
+ if(!lineClear(p,e,hard))return null;
+ const sector=(Math.round(angle/TAU*CONFIG.footstepHintSectors)+CONFIG.footstepHintSectors)%CONFIG.footstepHintSectors;
+ return {sector,strength:(1-length/range)**1.4*(occluded?CONFIG.footstepOcclusionStrength:1)};
+}
+function guardFootsteps(e,travelled,boxes){
+ if(travelled<=.02)return;
+ e.stepDistance=(e.stepDistance||0)+travelled;
+ if(e.stepDistance<CONFIG.footstepStride)return;
+ e.stepDistance%=CONFIG.footstepStride;
+ const cue=footstepCue(e,boxes);
+ if(!cue)return;
+ const previous=game.footsteps.find(h=>h.sector===cue.sector);
+ if(previous){previous.time=CONFIG.footstepHintLife;previous.strength=cue.strength;}
+ else game.footsteps.push({...cue,time:CONFIG.footstepHintLife});
+}
 function updateEnemies(dt,boxes){
  const f=floorNow(),p=game.player;
  for(const e of f.enemies){if(e.hp<=0)continue;e.flash=Math.max(0,e.flash-dt);e.cooldown=Math.max(0,e.cooldown-dt);
@@ -391,7 +418,7 @@ function updateEnemies(dt,boxes){
    e.state='patrol';e.aim=0;e.alerted=false;
    const c=center(e.roomId),bounds={x:c.x-CONFIG.room/2+CONFIG.wall,y:c.y-CONFIG.room/2+CONFIG.wall,w:CONFIG.room-2*CONFIG.wall,h:CONFIG.room-2*CONFIG.wall};
    if(!e.target||distance(e,e.target)<8){let target=null;for(let i=0;i<12;i++){const q={x:c.x+rand(-110,110),y:c.y+rand(-110,110)};if(canStand(q,e.radius,boxes)&&lineClear(e,q,boxes)){target=q;break;}}e.target=target;}
-   if(e.target){e.angle=Math.atan2(e.target.y-e.y,e.target.x-e.x);const before={x:e.x,y:e.y};moveActor(e,Math.cos(e.angle)*CONFIG.enemySpeed*dt,Math.sin(e.angle)*CONFIG.enemySpeed*dt,boxes,[p,...f.enemies],bounds);if(distance(before,e)<.02)e.target=null;}
+   if(e.target){e.angle=Math.atan2(e.target.y-e.y,e.target.x-e.x);const before={x:e.x,y:e.y};moveActor(e,Math.cos(e.angle)*CONFIG.enemySpeed*dt,Math.sin(e.angle)*CONFIG.enemySpeed*dt,boxes,[p,...f.enemies],bounds);const travelled=distance(before,e);guardFootsteps(e,travelled,boxes);if(travelled<.02)e.target=null;}
   }
  }
 }
@@ -422,7 +449,7 @@ function update(dt){
  resetCamera();updateFacing();updateAction(dt);p.knifeTimer=Math.max(0,p.knifeTimer-dt);p.pistolTimer=Math.max(0,p.pistolTimer-dt);p.flash=Math.max(0,p.flash-dt);p.hurt=Math.max(0,p.hurt-dt);
  game.stats.visitedRoomIds.add(`${game.currentFloor}:${roomAt(p.x,p.y)}`);
  // Existing effects expire before new shots so even a slow frame shows muzzle flashes.
- game.effects=game.effects.filter(e=>(e.time-=dt)>0);if(game.toast&&(game.toast.time-=dt)<=0)game.toast=null;
+ game.effects=game.effects.filter(e=>(e.time-=dt)>0);game.footsteps=game.footsteps.filter(h=>(h.time-=dt)>0);if(game.toast&&(game.toast.time-=dt)<=0)game.toast=null;
  updateEnemies(dt,boxes);game.interactable=interactionCandidates()[0]||null;discoverMap(boxes);
 }
 // The map remembers visited rooms and landmarks actually seen through the same
@@ -491,6 +518,19 @@ function drawActor(a,player=false){
  ctx.save();ctx.translate(a.x,a.y);ctx.rotate(angle);ctx.fillStyle=player?'#c8dce2':a.state==='aim'?'#d1b4a6':'#9a7a70';const knife=player&&a.weapon==='knife';ctx.fillRect(5,-3,knife?18:a.state==='aim'||player?18:13,knife?3:5);
  if(a.flash>0&&!player){ctx.beginPath();ctx.moveTo(24,-2);ctx.lineTo(34,-6);ctx.lineTo(30,0);ctx.lineTo(35,5);ctx.lineTo(24,3);ctx.fillStyle='#f4d49b';ctx.fill();}ctx.restore();
 }
+function drawFootstepHints(){
+ if(game.mode!=='PLAYING'&&game.mode!=='PAUSED')return;
+ const p=game.player,x=width/2+(p.x-camera.x)*CONFIG.zoom,y=height/2+(p.y-camera.y)*CONFIG.zoom;
+ ctx.save();ctx.lineCap='round';ctx.strokeStyle='#d6c8a3';
+ for(const hint of game.footsteps){
+  const age=1-hint.time/CONFIG.footstepHintLife,angle=hint.sector*TAU/CONFIG.footstepHintSectors;
+  ctx.globalAlpha=(.3+hint.strength*.65)*(1-age);ctx.lineWidth=2+hint.strength*1.5;
+  ctx.beginPath();ctx.arc(x,y,CONFIG.footstepHintRadius+age*10,angle-CONFIG.footstepHintArc/2,angle+CONFIG.footstepHintArc/2);ctx.stroke();
+  ctx.globalAlpha*=.45;ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(x,y,CONFIG.footstepHintRadius+6+age*10,angle-CONFIG.footstepHintArc/3,angle+CONFIG.footstepHintArc/3);ctx.stroke();
+ }
+ ctx.restore();
+}
 function render(){
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);
  if(!game.player||game.mode==='MENU')return;
@@ -524,7 +564,7 @@ function render(){
    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
   }
  }
- drawActor(p,true);ctx.restore();
+ drawActor(p,true);ctx.restore();drawFootstepHints();
  // Mouse crosshair is input UI, never an indicator of concealed entities.
  if(game.mode==='PLAYING'){ctx.strokeStyle='#8cabb3';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(mouse.x-6,mouse.y);ctx.lineTo(mouse.x-2,mouse.y);ctx.moveTo(mouse.x+2,mouse.y);ctx.lineTo(mouse.x+6,mouse.y);ctx.moveTo(mouse.x,mouse.y-6);ctx.lineTo(mouse.x,mouse.y-2);ctx.moveTo(mouse.x,mouse.y+2);ctx.lineTo(mouse.x,mouse.y+6);ctx.stroke();}
  updateHUD();
