@@ -48,7 +48,7 @@ const CONFIG = Object.freeze({
  ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4, searchableFurnitureChance:.25,
  furniturePlacementAttempts:50, furnitureGap:26, furnitureWallMargin:26,
  furnitureAnchorClearance:20, doorwayCoverChance:.8, enemySpawnSamples:48,
- enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
+ safeStairArrivalRooms:true, enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:30,
  bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
@@ -136,7 +136,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。開局房間與每次下樓抵達的房間不生成敵人。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';sound.pause();keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -168,6 +168,8 @@ function makeFloor(number){
  return f;
 }
 function roomDoors(f,id){return f.doors.filter(d=>d.roomA===id||d.roomB===id);}
+// A downward trip arrives at the lower floor's upward staircase.
+function safeArrivalRoom(f,id){return CONFIG.safeStairArrivalRooms&&f.stairs.some(st=>st.roomId===id&&st.toFloor>f.number);}
 function doorApproach(d,id){const c=center(id),dx=c.x-d.x,dy=c.y-d.y,length=Math.hypot(dx,dy);return {x:d.x+dx/length*32,y:d.y+dy/length*32};}
 function roomAnchors(f,id){
  const anchors=[center(id)];
@@ -232,6 +234,7 @@ function validateBuilding(floors,spawn){
  if(floors.reduce((n,f)=>n+f.stairs.length,0)!==2*(CONFIG.floors-1))errors.push('stair count');
  if(floors.filter(f=>f.exit).length!==1||!floors[0].exit)errors.push('exit');
  if(spawn&&floors[CONFIG.floors-1].enemies.some(e=>e.roomId===spawn.roomId))errors.push('unsafe spawn');
+ for(const f of floors)if(f.enemies.some(e=>safeArrivalRoom(f,e.roomId)))errors.push(`F${f.number}: unsafe stair arrival room`);
  return errors;
 }
 function buildBuilding(){
@@ -249,7 +252,7 @@ function buildBuilding(){
  for(const f of floors){placeFurniture(f);
   const geometry=blockers(f);
   for(const r of f.rooms){
-   if(f.number===CONFIG.floors&&r.id===spawnRoom)continue;if(Math.random()>CONFIG.enemyChance)continue;
+   if((f.number===CONFIG.floors&&r.id===spawnRoom)||safeArrivalRoom(f,r.id))continue;if(Math.random()>CONFIG.enemyChance)continue;
    const c=center(r.id),entries=roomDoors(f,r.id).map(d=>doorApproach(d,r.id)),anchors=roomAnchors(f,r.id);
    let position=null,best=-1;
    for(let i=0;i<CONFIG.enemySpawnSamples;i++){
@@ -360,7 +363,6 @@ function attack(){
    // Evaluate the guard's view before damage can turn it toward the attacker.
    const stealth=CONFIG.knifeStealthKill&&!inEnemyVision(e,p,boxes);
    damageEnemy(e,stealth?e.hp:CONFIG.knifeDamage);
-   if(stealth)notice('近戰偷襲 — 一擊必殺');
   }
  }
 }
