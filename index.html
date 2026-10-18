@@ -26,7 +26,7 @@ html,body{font-size:18px}
  <div class="hud-top"><div class="badge"><div class="small">CURRENT FLOOR</div><div class="floor" id="floor"></div><span id="health"></span><div class="hp"><i id="hp-fill"></i></div></div><div class="badge gear" id="gear"></div></div>
  <div id="toast" class="hidden" role="status"></div><div id="prompt" class="hidden"></div>
  <div id="action" class="hidden"><span id="action-label"></span><div class="track"><div id="action-fill"></div></div></div>
- <div class="hud-bottom"><div class="hint">W A S D &nbsp; 移動　 SHIFT &nbsp; 衝刺<br>E &nbsp; 互動　 R &nbsp; 換彈　 F &nbsp; 治療　 1 / 2 &nbsp; 武器</div><div class="hint" style="text-align:right">BLIND SPOT / V1.0<br>ESC &nbsp; 暫停</div></div>
+ <div class="hud-bottom"><div class="hint">W A S D &nbsp; 移動　 SHIFT &nbsp; 衝刺<br>E &nbsp; 互動　 R &nbsp; 換彈　 F &nbsp; 治療　 V &nbsp; 切換武器</div><div class="hint" style="text-align:right">BLIND SPOT / V1.0<br>ESC &nbsp; 暫停</div></div>
 </div>
 <div id="screen" class="screen"><div id="panel" class="panel"></div></div>
 <script>
@@ -35,15 +35,15 @@ html,body{font-size:18px}
 const CONFIG = Object.freeze({
  floors:3, grid:5, room:300, wall:12, doorWidth:76, extraDoorChance:.22,
  playerRadius:10, speed:150, sprint:1.7, hp:100, viewAngle:120*Math.PI/180,
- viewRooms:1.5, sightRays:190, cameraFollow:9, interactionRange:48,
- magSize:6, startingAmmo:6, pistolDamage:25, pistolSpread:2*Math.PI/180,
- reloadTime:1.5, healTime:2, healAmount:30, knifeDamage:35, knifeRange:30,
- knifeArc:70*Math.PI/180, knifeCooldown:.6, ammoChance:.55, medChance:.35,
+ viewRooms:1.5, sightRays:190, interactionRange:48,
+ magSize:6, startingAmmo:0, pistolPickupAmmo:6, pistolDamage:25, pistolCooldown:.2, pistolSpread:2*Math.PI/180,
+ reloadTime:1.5, healTime:2, healAmount:30, knifeDamage:35, knifeRange:45,
+ knifeArc:70*Math.PI/180, knifeCooldown:.6, ammoChance:.55, medChance:.35, pistolChance:.10,
  ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4,
  enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:15,
- bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1,
+ bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
  colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
   furniture:'#8c6238',furnitureEdge:'#e0b786',searched:'#58422d',searchedEdge:'#ac8b63',
   furnitureDetail:'#d3a372',searchedDetail:'#937454'}),
@@ -92,7 +92,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>1 / 2</b><span>手槍 / 刀（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>書桌與衣櫥可各搜尋一次。補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -175,7 +175,7 @@ function buildBuilding(){
 }
 function startGame(){
  const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=CONFIG.floors;game.runTime=0;game.effects=[];game.toast=null;game.interactable=null;
- game.player={x:spawn.x,y:spawn.y,radius:CONFIG.playerRadius,facing:-Math.PI/2,hp:CONFIG.hp,mag:CONFIG.magSize,reserveAmmo:CONFIG.startingAmmo,medkits:0,hasKnife:false,weapon:'pistol',action:null,knifeTimer:0,flash:0,hurt:0,sprinting:false};
+ game.player={x:spawn.x,y:spawn.y,radius:CONFIG.playerRadius,facing:-Math.PI/2,hp:CONFIG.hp,mag:0,reserveAmmo:CONFIG.startingAmmo,medkits:0,hasPistol:false,weapon:'knife',action:null,knifeTimer:0,pistolTimer:0,flash:0,hurt:0,sprinting:false};
  game.stats={kills:0,visitedRoomIds:new Set([`${CONFIG.floors}:${spawn.roomId}`]),lowestFloor:CONFIG.floors};keys.clear();resetCamera();resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
 }
 // 3. Shared doors, nearest legal interactions, one-time loot and persistent floors.
@@ -196,10 +196,10 @@ function interactionCandidates(){
 }
 function loot(o){
  if(o.searched)return;o.searched=true;const p=game.player;
- const r=Math.random()*(p.hasKnife?CONFIG.ammoChance+CONFIG.medChance:1);
+ const r=Math.random()*(CONFIG.ammoChance+CONFIG.medChance+(p.hasPistol?0:CONFIG.pistolChance));
  if(r<CONFIG.ammoChance){const n=int(CONFIG.ammoMin,CONFIG.ammoMax);p.reserveAmmo+=n;notice(`找到 ${n} 發備用子彈`);}
  else if(r<CONFIG.ammoChance+CONFIG.medChance){p.medkits++;notice('找到 1 份補血藥');}
- else{p.hasKnife=true;notice('找到一把刀 — 按 2 裝備');}
+ else{p.hasPistol=true;p.mag=Math.min(CONFIG.magSize,CONFIG.pistolPickupAmmo);notice(`找到手槍（含 ${p.mag} 發子彈）— 按 V 切換`);}
 }
 function interact(){
  const candidate=interactionCandidates()[0];if(!candidate)return;const o=candidate.obj;
@@ -224,9 +224,7 @@ function visibility(p,boxes){
  angles.sort((a,b)=>a-b);
  return angles.map(a=>cast(p,p.facing+a,range,boxes));
 }
-function viewSize(){return {w:width/CONFIG.zoom,h:height/CONFIG.zoom};}
-function resetCamera(){const v=viewSize(),p=game.player;camera.x=clamp(p.x,v.w/2,Math.max(v.w/2,SIZE-v.w/2));camera.y=clamp(p.y,v.h/2,Math.max(v.h/2,SIZE-v.h/2));if(v.w>SIZE)camera.x=SIZE/2;if(v.h>SIZE)camera.y=SIZE/2;}
-function updateCamera(dt){const old={...camera};resetCamera();const target={...camera},k=1-Math.exp(-CONFIG.cameraFollow*dt);camera.x=old.x+(target.x-old.x)*k;camera.y=old.y+(target.y-old.y)*k;}
+function resetCamera(){camera.x=game.player.x;camera.y=game.player.y;}
 function updateFacing(){const p=game.player;p.facing=Math.atan2((mouse.y-height/2)/CONFIG.zoom+camera.y-p.y,(mouse.x-width/2)/CONFIG.zoom+camera.x-p.x);}
 // 5. Hitscan, knife sweep, deferred resource consumption and interruptions.
 function beginAction(type){
@@ -236,14 +234,15 @@ function beginAction(type){
  if(type==='heal'&&(p.medkits<=0||p.hp>=CONFIG.hp))return;
  p.action={type,elapsed:0,duration:type==='reload'?CONFIG.reloadTime:CONFIG.healTime};
 }
-function switchWeapon(weapon){const p=game.player;if(weapon==='knife'&&!p.hasKnife){notice('尚未找到刀');return;}if(p.weapon!==weapon){p.action=null;p.weapon=weapon;}}
+function switchWeapon(weapon){const p=game.player;if(weapon==='pistol'&&!p.hasPistol){notice('尚未找到手槍 — 搜尋書桌或衣櫥');return;}if(p.weapon!==weapon){p.action=null;p.weapon=weapon;}}
 function damageEnemy(e,amount){e.hp=Math.max(0,e.hp-amount);if(e.hp===0){e.state='dead';game.stats.kills++;}}
 function attack(){
  if(game.mode!=='PLAYING')return;const p=game.player;updateFacing();
  if(p.sprinting||(keys.has('ShiftLeft')||keys.has('ShiftRight'))&&moving()||p.action)return;
  const f=floorNow(),boxes=blockers(f),enemies=f.enemies.filter(e=>e.hp>0);
  if(p.weapon==='pistol'){
-  if(!p.mag){notice('彈匣已空 — 按 R 換彈');return;}p.mag--;p.flash=CONFIG.flashLife;
+  if(p.pistolTimer>0)return;
+  if(!p.mag){notice('彈匣已空 — 按 R 換彈');return;}p.mag--;p.pistolTimer=CONFIG.pistolCooldown;p.flash=CONFIG.flashLife;
   const hit=cast(p,p.facing+rand(-CONFIG.pistolSpread,CONFIG.pistolSpread),SIZE*1.5,boxes,enemies);
   if(hit.target)damageEnemy(hit.target,CONFIG.pistolDamage);game.effects.push({type:'bullet',x:p.x,y:p.y,tx:hit.x,ty:hit.y,time:CONFIG.bulletLife,enemy:false});
  }else if(p.knifeTimer<=0){
@@ -283,7 +282,7 @@ function update(dt){
  p.sprinting=n>0&&(keys.has('ShiftLeft')||keys.has('ShiftRight'));
  if(p.sprinting&&p.action){p.action=null;notice('動作已中斷');}
  const speed=CONFIG.speed*(p.sprinting?CONFIG.sprint:1);if(n)moveActor(p,dx/n*speed*dt,dy/n*speed*dt,boxes,f.enemies);
- updateCamera(dt);updateFacing();updateAction(dt);p.knifeTimer=Math.max(0,p.knifeTimer-dt);p.flash=Math.max(0,p.flash-dt);p.hurt=Math.max(0,p.hurt-dt);
+ resetCamera();updateFacing();updateAction(dt);p.knifeTimer=Math.max(0,p.knifeTimer-dt);p.pistolTimer=Math.max(0,p.pistolTimer-dt);p.flash=Math.max(0,p.flash-dt);p.hurt=Math.max(0,p.hurt-dt);
  game.stats.visitedRoomIds.add(`${game.currentFloor}:${roomAt(p.x,p.y)}`);
  // Existing effects expire before new shots so even a slow frame shows muzzle flashes.
  game.effects=game.effects.filter(e=>(e.time-=dt)>0);if(game.toast&&(game.toast.time-=dt)<=0)game.toast=null;
@@ -351,7 +350,7 @@ function render(){
 }
 function updateHUD(){
  const p=game.player;$('floor').textContent=`${game.currentFloor}F`;$('health').textContent=`HP ${Math.ceil(p.hp)} / ${CONFIG.hp}`;$('hp-fill').style.width=`${p.hp/CONFIG.hp*100}%`;
- $('gear').innerHTML=`<span class="small">${p.weapon==='pistol'?'PISTOL / 手槍':'KNIFE / 刀'}</span><br><strong>${p.mag.toString().padStart(2,'0')}</strong> / ${p.reserveAmmo.toString().padStart(2,'0')}<br>補血藥 ${p.medkits} &nbsp; · &nbsp; ${p.hasKnife?'刀 ✓':'刀 —'}`;
+ $('gear').innerHTML=`<span class="small">${p.weapon==='pistol'?'PISTOL / 手槍':'KNIFE / 刀'}</span><br><strong>${p.hasPistol?p.mag.toString().padStart(2,'0'):'—'}</strong> / ${p.reserveAmmo.toString().padStart(2,'0')}<br>補血藥 ${p.medkits} &nbsp; · &nbsp; ${p.hasPistol?'手槍 ✓ · V 切換':'手槍未取得'}`;
  const it=game.interactable;$('prompt').classList.toggle('hidden',!it||game.mode!=='PLAYING');if(it)$('prompt').textContent=it.label;
  $('toast').classList.toggle('hidden',!game.toast);if(game.toast)$('toast').textContent=game.toast.text;
  $('action').classList.toggle('hidden',!p.action);if(p.action){$('action-label').textContent=p.action.type==='reload'?'換彈中 RELOADING':'治療中 HEALING';$('action-fill').style.width=`${p.action.elapsed/p.action.duration*100}%`;}
@@ -359,10 +358,10 @@ function updateHUD(){
 function resize(){width=window.innerWidth;height=window.innerHeight;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);if(game.player)resetCamera();}
 window.addEventListener('resize',resize);
 window.addEventListener('keydown',e=>{
- if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyE','KeyR','KeyF','Digit1','Digit2','Escape','Space'].includes(e.code))e.preventDefault();
+ if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyE','KeyR','KeyF','KeyV','Escape','Space'].includes(e.code))e.preventDefault();
  if(e.code==='Escape'&&!e.repeat){if(game.mode==='PLAYING')pause();else if(game.mode==='PAUSED')resume();return;}
  if(game.mode!=='PLAYING')return;keys.add(e.code);if(e.repeat)return;
- switch(e.code){case 'KeyE':interact();break;case 'KeyR':beginAction('reload');break;case 'KeyF':beginAction('heal');break;case 'Digit1':switchWeapon('pistol');break;case 'Digit2':switchWeapon('knife');break;}
+ switch(e.code){case 'KeyE':interact();break;case 'KeyR':beginAction('reload');break;case 'KeyF':beginAction('heal');break;case 'KeyV':switchWeapon(game.player.weapon==='knife'?'pistol':'knife');break;}
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();pause();});document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 canvas.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.x=e.clientX;mouse.y=e.clientY;attack();}});canvas.addEventListener('contextmenu',e=>e.preventDefault());
