@@ -18,6 +18,11 @@ html,body{font-size:18px}
 #toast{font-size:18px;top:165px;max-width:calc(100% - 24px);text-align:center}
 #action{font-size:16px;width:260px;bottom:80px}
 @media(max-width:600px){.controls{grid-template-columns:110px 1fr;font-size:16px}.gear,#health{font-size:16px}.small{font-size:13px}.lead{font-size:17px}#toast{top:155px;font-size:16px}#prompt{font-size:17px}}
+.minimap{position:absolute;right:28px;bottom:98px;padding:12px;background:rgba(8,13,17,.94);border:1px solid #344149}
+.minimap-title{font-size:15px;color:#d0dde1;margin-bottom:10px}
+#minimap{width:var(--minimap-size,180px);height:var(--minimap-size,180px);cursor:default}
+.minimap-legend{font-size:13px;line-height:1.8;color:#a5b7bf;margin-top:8px}
+@media(max-width:600px){.minimap{right:12px;top:165px;bottom:auto;padding:9px}#minimap{width:140px;height:140px}.minimap-legend{font-size:12px}.minimap-title{font-size:14px}}
 </style>
 </head>
 <body>
@@ -26,6 +31,7 @@ html,body{font-size:18px}
  <div class="hud-top"><div class="badge"><div class="small">CURRENT FLOOR</div><div class="floor" id="floor"></div><span id="health"></span><div class="hp"><i id="hp-fill"></i></div></div><div class="badge gear" id="gear"></div></div>
  <div id="toast" class="hidden" role="status"></div><div id="prompt" class="hidden"></div>
  <div id="action" class="hidden"><span id="action-label"></span><div class="track"><div id="action-fill"></div></div></div>
+ <div class="minimap"><div class="minimap-title" id="minimap-title">小地圖</div><canvas id="minimap" aria-label="目前樓層已探索房間與玩家位置"></canvas><div class="minimap-legend">藍點：你　琥珀：關門<br>↑ 上樓　↓ 下樓　綠框：出口</div></div>
  <div class="hud-bottom"><div class="hint">W A S D &nbsp; 移動　 SHIFT &nbsp; 衝刺<br>E &nbsp; 互動　 R &nbsp; 換彈　 F &nbsp; 治療　 V &nbsp; 切換武器</div><div class="hint" style="text-align:right">BLIND SPOT / V1.0<br>ESC &nbsp; 暫停</div></div>
 </div>
 <div id="screen" class="screen"><div id="panel" class="panel"></div></div>
@@ -42,12 +48,12 @@ const CONFIG = Object.freeze({
  ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4,
  enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
- enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:15,
+ enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:30,
  bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
  colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
   furniture:'#8c6238',furnitureEdge:'#e0b786',searched:'#58422d',searchedEdge:'#ac8b63',
   furnitureDetail:'#d3a372',searchedDetail:'#937454'}),
- roomFont:16, stairFont:26, exitFont:14
+ roomFont:16, stairFont:26, exitFont:14, minimapSize:180
 });
 const $=id=>document.getElementById(id), canvas=$('world'), ctx=canvas.getContext('2d');
 const TAU=Math.PI*2, SIZE=CONFIG.grid*CONFIG.room, TOTAL_ROOMS=CONFIG.floors*CONFIG.grid**2;
@@ -92,7 +98,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -103,7 +109,7 @@ function finish(won){game.mode=won?'VICTORY':'GAME_OVER';keys.clear();$('hud').c
 $('screen').addEventListener('click',e=>{const b=e.target.closest('[data-do]');if(!b)return;switch(b.dataset.do){case 'start':startGame();break;case 'menu':menu();break;case 'resume':resume();break;case 'controls':showControls();break;case 'back':controlsReturn==='MENU'?menu():pausePanel();break;case 'restart-confirm':confirmRestart=true;showPanel(`<div class="eyebrow">CONFIRM RESTART</div><h2>放棄這次逃生？</h2><p class="lead">目前進度將消失，整棟大樓會重新生成。</p><div class="buttons"><button data-do="resume">取消，繼續遊戲</button><button data-do="start">確認重新開始</button></div>`);break;}});
 // 2. Connected building, physical walls, reserved indoor routes and validation.
 function makeFloor(number){
- const f={number,rooms:Array.from({length:25},(_,id)=>({id,links:[]})),walls:[],doors:[],furniture:[],enemies:[],stairs:[],exit:null};
+ const f={number,rooms:Array.from({length:25},(_,id)=>({id,links:[]})),walls:[],doors:[],furniture:[],enemies:[],stairs:[],exit:null,discovered:new Set()};
  const edges=new Set(),seen=new Set([int(0,24)]),stack=[...seen];
  const neighbors=id=>[id%5>0?id-1:-1,id%5<4?id+1:-1,id>=5?id-5:-1,id<20?id+5:-1].filter(x=>x>=0);
  const connect=(a,b)=>{const key=[a,b].sort((x,y)=>x-y).join(':');if(edges.has(key))return;edges.add(key);f.rooms[a].links.push(b);f.rooms[b].links.push(a);};
@@ -176,7 +182,7 @@ function buildBuilding(){
 function startGame(){
  const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=CONFIG.floors;game.runTime=0;game.effects=[];game.toast=null;game.interactable=null;
  game.player={x:spawn.x,y:spawn.y,radius:CONFIG.playerRadius,facing:-Math.PI/2,hp:CONFIG.hp,mag:0,reserveAmmo:CONFIG.startingAmmo,medkits:0,hasPistol:false,weapon:'knife',action:null,knifeTimer:0,pistolTimer:0,flash:0,hurt:0,sprinting:false};
- game.stats={kills:0,visitedRoomIds:new Set([`${CONFIG.floors}:${spawn.roomId}`]),lowestFloor:CONFIG.floors};keys.clear();resetCamera();resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
+ game.stats={kills:0,visitedRoomIds:new Set([`${CONFIG.floors}:${spawn.roomId}`]),lowestFloor:CONFIG.floors};keys.clear();resetCamera();discoverMap(blockers(floorNow()));resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
 }
 // 3. Shared doors, nearest legal interactions, one-time loot and persistent floors.
 function interactionCandidates(){
@@ -286,7 +292,51 @@ function update(dt){
  game.stats.visitedRoomIds.add(`${game.currentFloor}:${roomAt(p.x,p.y)}`);
  // Existing effects expire before new shots so even a slow frame shows muzzle flashes.
  game.effects=game.effects.filter(e=>(e.time-=dt)>0);if(game.toast&&(game.toast.time-=dt)<=0)game.toast=null;
- updateEnemies(dt,boxes);game.interactable=interactionCandidates()[0]||null;
+ updateEnemies(dt,boxes);game.interactable=interactionCandidates()[0]||null;discoverMap(boxes);
+}
+// The map remembers visited rooms and landmarks actually seen through the same
+// geometry as the main view. It never reads or displays enemy positions.
+function discoverMap(boxes){
+ const f=floorNow(),p=game.player;
+ for(const o of [...f.doors,...f.stairs,...(f.exit?[f.exit]:[])]){
+  if(f.discovered.has(o.id))continue;
+  const q=o.bounds?{x:clamp(p.x,o.bounds.x,o.bounds.x+o.bounds.w),y:clamp(p.y,o.bounds.y,o.bounds.y+o.bounds.h)}:o;
+  const length=distance(p,q),angle=Math.atan2(q.y-p.y,q.x-p.x);
+  if(length>CONFIG.room*CONFIG.viewRooms||Math.abs(angleDiff(angle,p.facing))>CONFIG.viewAngle/2)continue;
+  const limit=Math.max(0,length-.25);
+  if(cast(p,angle,limit,boxes).t>=limit-.01)f.discovered.add(o.id);
+ }
+}
+function drawMinimap(){
+ const map=$('minimap'),m=map.getContext('2d'),size=CONFIG.minimapSize,p=game.player,f=floorNow();
+ const pixelSize=Math.round(size*dpr);
+ if(map.width!==pixelSize||map.height!==pixelSize){map.width=pixelSize;map.height=pixelSize;}
+ map.style.setProperty('--minimap-size',`${size}px`);
+ m.setTransform(dpr,0,0,dpr,0,0);m.fillStyle='#080d10';m.fillRect(0,0,size,size);
+ const padding=5,scale=(size-2*padding)/SIZE,cell=CONFIG.room*scale,current=roomAt(p.x,p.y);
+ const visited=id=>id===current||game.stats.visitedRoomIds.has(`${game.currentFloor}:${id}`);
+ for(const room of f.rooms){if(!visited(room.id))continue;const x=padding+(room.id%CONFIG.grid)*cell,y=padding+Math.floor(room.id/CONFIG.grid)*cell;
+  m.fillStyle=room.id===current?'#294652':'#263239';m.fillRect(x+2,y+2,cell-4,cell-4);
+  m.strokeStyle='#52636d';m.lineWidth=1;m.strokeRect(x+2,y+2,cell-4,cell-4);
+ }
+ for(const d of f.doors){if(!f.discovered.has(d.id))continue;
+  const x=padding+d.x*scale,y=padding+d.y*scale;
+  m.strokeStyle=d.open?'#8ca9b4':CONFIG.colors.doorEdge;m.lineWidth=3;m.beginPath();
+  if(d.vertical){m.moveTo(x-5,y);m.lineTo(x+5,y);}else{m.moveTo(x,y-5);m.lineTo(x,y+5);}m.stroke();
+ }
+ m.font='bold 16px monospace';m.textAlign='center';m.textBaseline='middle';
+ for(const st of f.stairs){if(!f.discovered.has(st.id))continue;
+  const c=center(st.roomId),up=st.toFloor>game.currentFloor;
+  m.fillStyle='#d4e8ef';m.fillText(up?'↑':'↓',padding+(c.x+(up?-60:60))*scale,padding+c.y*scale);
+ }
+ if(f.exit&&f.discovered.has(f.exit.id)){
+  const c=center(f.exit.roomId),x=padding+c.x*scale,y=padding+(c.y+65)*scale;
+  m.strokeStyle='#8fe1a1';m.lineWidth=2;m.strokeRect(x-6,y-3,12,6);
+ }
+ const x=padding+p.x*scale,y=padding+p.y*scale;
+ m.strokeStyle='#8bd7f1';m.lineWidth=2;m.beginPath();m.moveTo(x,y);m.lineTo(x+Math.cos(p.facing)*9,y+Math.sin(p.facing)*9);m.stroke();
+ m.beginPath();m.arc(x,y,3.5,0,TAU);m.fillStyle='#8bd7f1';m.fill();
+ $('minimap-title').textContent=`小地圖 · ${game.currentFloor}F`;
 }
 // 7. Strictly clipped rendering, pause/input lifecycle and final status screens.
 function drawRect(b,fill,stroke=null){ctx.fillStyle=fill;ctx.fillRect(b.x,b.y,b.w,b.h);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);}}
@@ -349,6 +399,7 @@ function render(){
  updateHUD();
 }
 function updateHUD(){
+ drawMinimap();
  const p=game.player;$('floor').textContent=`${game.currentFloor}F`;$('health').textContent=`HP ${Math.ceil(p.hp)} / ${CONFIG.hp}`;$('hp-fill').style.width=`${p.hp/CONFIG.hp*100}%`;
  $('gear').innerHTML=`<span class="small">${p.weapon==='pistol'?'PISTOL / 手槍':'KNIFE / 刀'}</span><br><strong>${p.hasPistol?p.mag.toString().padStart(2,'0'):'—'}</strong> / ${p.reserveAmmo.toString().padStart(2,'0')}<br>補血藥 ${p.medkits} &nbsp; · &nbsp; ${p.hasPistol?'手槍 ✓ · V 切換':'手槍未取得'}`;
  const it=game.interactable;$('prompt').classList.toggle('hidden',!it||game.mode!=='PLAYING');if(it)$('prompt').textContent=it.label;
