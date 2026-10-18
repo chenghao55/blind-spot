@@ -32,7 +32,7 @@ html,body{font-size:18px}
  <div id="toast" class="hidden" role="status"></div><div id="prompt" class="hidden"></div>
  <div id="action" class="hidden"><span id="action-label"></span><div class="track"><div id="action-fill"></div></div></div>
  <div class="minimap"><div class="minimap-title" id="minimap-title">小地圖</div><canvas id="minimap" aria-label="目前樓層已探索房間與玩家位置"></canvas><div class="minimap-legend">藍點：你　琥珀：關門<br>↑ 上樓　↓ 下樓　綠框：出口</div></div>
- <div class="hud-bottom"><div class="hint">W A S D &nbsp; 移動　 CTRL &nbsp; 衝刺　 SPACE &nbsp; 突進<br>E &nbsp; 互動　 R &nbsp; 換彈　 F &nbsp; 治療　 V &nbsp; 切換武器</div><div class="hint" style="text-align:right">BLIND SPOT / V1.0<br>ESC &nbsp; 暫停</div></div>
+ <div class="hud-bottom"><div class="hint">W A S D &nbsp; 移動　 SHIFT &nbsp; 衝刺　 SPACE &nbsp; 突進<br>E &nbsp; 互動　 R &nbsp; 換彈　 F &nbsp; 治療　 V &nbsp; 切換武器</div><div class="hint" style="text-align:right">BLIND SPOT / V1.0<br>ESC &nbsp; 暫停</div></div>
 </div>
 <div id="screen" class="screen"><div id="panel" class="panel"></div></div>
 <script>
@@ -46,13 +46,14 @@ const CONFIG = Object.freeze({
  reloadTime:1.5, healTime:2, healAmount:30, knifeDamage:35, knifeRange:45,
  knifeArc:70*Math.PI/180, knifeCooldown:.6, knifeStealthKill:true, ammoChance:.55, medChance:.35, pistolChance:.10,
  ammoMin:2, ammoMax:4, furnitureMin:2, furnitureMax:4, searchableFurnitureChance:.25,
+ furniturePlacementAttempts:50, furnitureGap:26, furnitureWallMargin:26,
+ furnitureAnchorClearance:20, doorwayCoverChance:.8, enemySpawnSamples:48,
  enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:30,
  bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
  colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
-  furniture:'#8c6238',furnitureEdge:'#e0b786',searched:'#58422d',searchedEdge:'#ac8b63',
-  furnitureDetail:'#d3a372',searchedDetail:'#937454'}),
+  furniture:'#8c6238',furnitureEdge:'#e0b786',furnitureDetail:'#d3a372'}),
  roomFont:16, stairFont:26, exitFont:14, minimapSize:180,
  shotVolume:.65, enemyShotVolume:.35, reloadVolume:.55, knifeVolume:.6, maxEffectVoices:8
 });
@@ -135,7 +136,7 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Ctrl 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次。<br>近戰從敵人視野外命中可一擊必殺。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
 function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';sound.pause();keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
@@ -166,26 +167,60 @@ function makeFloor(number){
  }
  return f;
 }
+function roomDoors(f,id){return f.doors.filter(d=>d.roomA===id||d.roomB===id);}
+function doorApproach(d,id){const c=center(id),dx=c.x-d.x,dy=c.y-d.y,length=Math.hypot(dx,dy);return {x:d.x+dx/length*32,y:d.y+dy/length*32};}
+function roomAnchors(f,id){
+ const anchors=[center(id)];
+ for(const d of roomDoors(f,id))anchors.push({x:d.x,y:d.y},doorApproach(d,id));
+ for(const st of f.stairs)if(st.roomId===id)anchors.push(st,{x:st.x,y:st.y+30});
+ if(f.exit?.roomId===id)anchors.push(f.exit);
+ if(f.spawnPosition?.roomId===id)anchors.push(f.spawnPosition);
+ return anchors;
+}
 function placeFurniture(f){
- const searchableTypes=['desk','wardrobe'],solidTypes=['sofa','shelf'];
+ const searchableTypes=['desk','wardrobe'],solidTypes=['sofa','shelf'],s=CONFIG.room;
  for(const room of f.rooms){
-  const c=center(room.id),slots=[[-81,-80],[79,-78],[-80,79],[80,80]].sort(()=>Math.random()-.5);
+  const c=center(room.id),anchors=roomAnchors(f,room.id),doors=roomDoors(f,room.id),margin=CONFIG.furnitureWallMargin;
   for(let i=0,n=int(CONFIG.furnitureMin,CONFIG.furnitureMax);i<n;i++){
-   const type=pick(Math.random()<CONFIG.searchableFurnitureChance?searchableTypes:solidTypes),[sx,sy]=slots[i],wide=type==='sofa'||type==='desk',w=wide?68:44,h=type==='shelf'?62:42;
-   f.furniture.push({id:`${f.number}-f${room.id}-${i}`,roomId:room.id,type,bounds:{x:c.x+sx-w/2+rand(-6,6),y:c.y+sy-h/2+rand(-6,6),w,h},searchable:type==='desk'||type==='wardrobe',searched:false});
+   const type=pick(Math.random()<CONFIG.searchableFurnitureChance?searchableTypes:solidTypes);
+   for(let attempt=0;attempt<CONFIG.furniturePlacementAttempts;attempt++){
+    let w=type==='sofa'?rand(80,110):type==='shelf'?rand(72,112):type==='desk'?rand(58,78):rand(42,58);
+    let h=type==='wardrobe'?rand(48,68):rand(34,48);
+    let x,y;
+    if(i===0&&attempt<12&&doors.length&&Math.random()<CONFIG.doorwayCoverChance){
+     // A screen offset from an entry interrupts its direct sightline. Passage around
+     // both ends remains subject to the same physical connectivity test as all furniture.
+     const d=pick(doors),vertical=d.vertical;
+     if((vertical&&w>h)||(!vertical&&h>w))[w,h]=[h,w];
+     x=d.x+(vertical?Math.sign(c.x-d.x)*rand(70,110):rand(-32,32));
+     y=d.y+(vertical?rand(-32,32):Math.sign(c.y-d.y)*rand(70,110));
+    }else{
+     if(Math.random()<.5)[w,h]=[h,w];
+     x=c.x+rand(-s/2+margin+w/2,s/2-margin-w/2);
+     y=c.y+rand(-s/2+margin+h/2,s/2-margin-h/2);
+    }
+    const bounds={x:x-w/2,y:y-h/2,w,h};
+    if(bounds.x<c.x-s/2+margin||bounds.y<c.y-s/2+margin||bounds.x+w>c.x+s/2-margin||bounds.y+h>c.y+s/2-margin)continue;
+    if(anchors.some(p=>boxDistance(p,bounds)<CONFIG.furnitureAnchorClearance))continue;
+    const gap=CONFIG.furnitureGap;
+    if(f.furniture.some(o=>o.roomId===room.id&&bounds.x<o.bounds.x+o.bounds.w+gap&&bounds.x+w+gap>o.bounds.x&&bounds.y<o.bounds.y+o.bounds.h+gap&&bounds.y+h+gap>o.bounds.y))continue;
+    const o={id:`${f.number}-f${room.id}-${i}`,roomId:room.id,type,bounds,searchable:type==='desk'||type==='wardrobe',searched:false};
+    f.furniture.push(o);
+    if(reachableRoom(f,room.id))break;
+    f.furniture.pop();
+   }
   }
  }
 }
 function reachableRoom(f,id){
- // Flood at player diameter resolution, with every door open. Reach all door centers,
- // center stair/exit anchors, and the complete ring around the reserved cross corridor.
+ // Flood with every door open; protect actual entry/exit/spawn anchors, allowing
+ // winding routes around cover rather than reserving a straight central corridor.
  const s=CONFIG.room,step=15,n=s/step,mid=n/2,base={x:(id%5)*s,y:Math.floor(id/5)*s};
  const boxes=[...f.walls.filter(b=>b.x+b.w>=base.x&&b.x<=base.x+s&&b.y+b.h>=base.y&&b.y<=base.y+s),...f.furniture.filter(o=>o.roomId===id).map(o=>o.bounds)];
  const good=(x,y)=>x>=0&&y>=0&&x<=n&&y<=n&&canStand({x:base.x+x*step,y:base.y+y*step},CONFIG.playerRadius,boxes);
  const seen=new Set([`${mid},${mid}`]),queue=[[mid,mid]];
  for(let head=0;head<queue.length;head++){const [x,y]=queue[head];for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=`${nx},${ny}`;if(!seen.has(key)&&good(nx,ny)){seen.add(key);queue.push([nx,ny]);}}}
- const required=[[mid,mid],[mid-2,mid],[mid+2,mid],[mid,mid-2],[mid,mid+2],[mid-2,mid+2],[mid+2,mid+2]];
- for(const d of f.doors)if(d.roomA===id||d.roomB===id)required.push([Math.round((d.x-base.x)/step),Math.round((d.y-base.y)/step)]);
+ const required=roomAnchors(f,id).map(p=>[Math.round((p.x-base.x)/step),Math.round((p.y-base.y)/step)]);
  return required.every(([x,y])=>seen.has(`${x},${y}`));
 }
 function validateBuilding(floors,spawn){
@@ -210,8 +245,22 @@ function buildBuilding(){
  }
  const exitRoom=int(0,24),exitPos=center(exitRoom);floors[0].exit={id:'exit',roomId:exitRoom,x:exitPos.x,y:exitPos.y-30};
  const spawnRoom=int(0,24),spawn={...center(spawnRoom),roomId:spawnRoom};
- for(const f of floors){placeFurniture(f);for(const room of f.rooms)if(!reachableRoom(f,room.id))f.furniture=f.furniture.filter(o=>o.roomId!==room.id);
-  for(const r of f.rooms){if(f.number===CONFIG.floors&&r.id===spawnRoom)continue;if(Math.random()>CONFIG.enemyChance)continue;const c=center(r.id);f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,x:c.x,y:c.y+65,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0});}
+ floors[CONFIG.floors-1].spawnPosition=spawn;
+ for(const f of floors){placeFurniture(f);
+  const geometry=blockers(f);
+  for(const r of f.rooms){
+   if(f.number===CONFIG.floors&&r.id===spawnRoom)continue;if(Math.random()>CONFIG.enemyChance)continue;
+   const c=center(r.id),entries=roomDoors(f,r.id).map(d=>doorApproach(d,r.id)),anchors=roomAnchors(f,r.id);
+   let position=null,best=-1;
+   for(let i=0;i<CONFIG.enemySpawnSamples;i++){
+    const q={x:c.x+rand(-110,110),y:c.y+rand(-110,110)};
+    if(!canStand(q,CONFIG.enemyRadius,geometry)||anchors.some(a=>distance(a,q)<CONFIG.enemyRadius+CONFIG.playerRadius+12))continue;
+    const cover=entries.filter(a=>!lineClear(a,q,geometry)).length;
+    if(cover>best){position=q;best=cover;}
+   }
+   if(!position)continue;
+   f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,...position,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0});
+  }
  }
  const errors=validateBuilding(floors,spawn);if(errors.length)throw new Error(errors.join(', '));
  return {floors,spawn};
@@ -349,7 +398,7 @@ function movementInput(){
  return length?{x:x/length,y:y/length}:{x:0,y:0};
 }
 function moving(){const direction=movementInput();return direction.x!==0||direction.y!==0;}
-function sprintHeld(){return keys.has('ControlLeft')||keys.has('ControlRight');}
+function sprintHeld(){return keys.has('ShiftLeft')||keys.has('ShiftRight');}
 function startDash(){
  const p=game.player;if(p.dash||p.dashCooldown>0)return;
  const direction=movementInput();if(!direction.x&&!direction.y){notice('按住移動方向，再按 Space 突進');return;}
@@ -423,8 +472,8 @@ function drawRect(b,fill,stroke=null){ctx.fillStyle=fill;ctx.fillRect(b.x,b.y,b.
 function circle(x,y,r,color){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fillStyle=color;ctx.fill();}
 function furniturePalette(o){
  const c=CONFIG.colors;
- if(!o.searchable)return {fill:c.wall,edge:c.wallEdge,detail:c.wallEdge};
- return o.searched?{fill:c.searched,edge:c.searchedEdge,detail:c.searchedDetail}:{fill:c.furniture,edge:c.furnitureEdge,detail:c.furnitureDetail};
+ if(!o.searchable||o.searched)return {fill:c.wall,edge:c.wallEdge,detail:c.wallEdge};
+ return {fill:c.furniture,edge:c.furnitureEdge,detail:c.furnitureDetail};
 }
 function drawFurniture(o){const b=o.bounds,palette=furniturePalette(o);drawRect(b,palette.fill,palette.edge);ctx.strokeStyle=palette.detail;ctx.lineWidth=2;
  if(o.type==='desk'){ctx.strokeRect(b.x+7,b.y+7,b.w-14,b.h-14);}
@@ -490,7 +539,7 @@ function updateHUD(){
 function resize(){width=window.innerWidth;height=window.innerHeight;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);if(game.player)resetCamera();}
 window.addEventListener('resize',resize);
 window.addEventListener('keydown',e=>{
- if(['KeyW','KeyA','KeyS','KeyD','ControlLeft','ControlRight','KeyE','KeyR','KeyF','KeyV','Escape','Space'].includes(e.code))e.preventDefault();
+ if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyE','KeyR','KeyF','KeyV','Escape','Space'].includes(e.code))e.preventDefault();
  if(e.code==='Escape'&&!e.repeat){if(game.mode==='PLAYING')pause();else if(game.mode==='PAUSED')resume();return;}
  if(game.mode!=='PLAYING')return;keys.add(e.code);if(e.repeat)return;
  switch(e.code){case 'Space':startDash();break;case 'KeyE':interact();break;case 'KeyR':beginAction('reload');break;case 'KeyF':beginAction('heal');break;case 'KeyV':switchWeapon(game.player.weapon==='knife'?'pistol':'knife');break;}
