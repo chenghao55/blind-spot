@@ -7,6 +7,17 @@
 <title>BLIND SPOT — Escape the unseen</title>
 <style>
 :root{color-scheme:dark;--ink:#eef2ee;--muted:#8e9b9f;--blue:#80bdcf;--line:#303b40;--green:#a1c6a1}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--ink);font-family:Arial,"Microsoft JhengHei",sans-serif}canvas{display:block;width:100%;height:100%;cursor:crosshair}button{font:inherit;cursor:pointer;color:var(--ink);background:#162025;border:1px solid #43545b;padding:14px 23px;text-align:left;transition:background .15s}button:hover,button:focus-visible{background:#2b404a;outline:1px solid var(--blue)}button.primary{background:#a8c7ce;color:#0b171c;border-color:#a8c7ce;font-weight:bold}.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,9,12,.93);padding:32px;overflow:auto}.screen.hidden,.hidden{display:none!important}.panel{max-width:760px;width:100%}.eyebrow{font-size:11px;letter-spacing:4px;color:var(--blue);margin-bottom:24px}h1{font-size:clamp(48px,9vw,100px);line-height:.9;letter-spacing:-5px;margin:0 0 24px;font-weight:900}h2{font-size:40px;letter-spacing:1px;margin:0 0 24px}.lead{color:#aeb9ba;line-height:1.9;max-width:510px;font-size:14px}.buttons{display:flex;gap:12px;margin:28px 0;flex-wrap:wrap}.footer{border-top:1px solid var(--line);padding-top:18px;margin-top:35px;font-size:11px;letter-spacing:2px;color:var(--muted)}.controls{display:grid;grid-template-columns:150px 1fr;gap:12px;font-size:14px;line-height:1.6}.controls b{color:var(--blue);font-family:monospace}.controls span{color:#b3bfc2}.note{font-size:12px;color:#8e9b9f;line-height:1.8;margin-top:22px}#hud{position:absolute;inset:0;pointer-events:none;padding:25px 28px;display:flex;flex-direction:column;justify-content:space-between}.hud-top,.hud-bottom{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.badge{background:rgba(8,13,17,.9);border:1px solid #344149;padding:13px 16px}.floor{font-size:27px;font-weight:bold;letter-spacing:2px}.small{font-size:10px;letter-spacing:2px;color:var(--muted)}.hp{margin-top:8px;width:145px;height:3px;background:#29333b}.hp i{display:block;height:100%;background:var(--blue)}#health{font:13px monospace;display:block;margin-top:10px}.gear{text-align:right;font:13px monospace;line-height:1.9}.gear strong{font-size:24px;color:#dce8eb}.hud-bottom{align-items:flex-end}.hint{font-size:11px;line-height:1.9;color:#819298}#prompt{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);padding:12px 20px;background:#14232a;border:1px solid #5b899a;font-size:13px;white-space:nowrap}#toast{position:absolute;left:50%;top:95px;transform:translateX(-50%);color:#d5e5df;background:rgba(12,21,24,.9);padding:10px 18px;font-size:13px}#action{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);width:220px;font-size:12px;text-align:center;color:#cbd9dc}#action .track{height:3px;background:#29353a;margin-top:10px}#action-fill{height:100%;background:var(--blue)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid var(--line);padding-top:24px;margin-top:28px}.stats div{color:var(--muted);font-size:12px}.stats strong{display:block;font-size:25px;color:var(--ink);margin-top:8px}@media(max-width:600px){#hud{padding:12px}.hint{display:none}.controls{grid-template-columns:110px 1fr;font-size:12px}h1{letter-spacing:-3px}.badge{padding:9px}.screen{padding:22px}.gear{font-size:11px}}
+/* Readable UI sizes, including compact windows. */
+html,body{font-size:18px}
+.panel{max-width:800px}.eyebrow,.footer{font-size:14px}
+.lead{font-size:18px;max-width:640px}.controls{font-size:18px;grid-template-columns:170px 1fr}
+.note{font-size:16px}.small{font-size:14px;letter-spacing:1.5px}
+.floor{font-size:32px}#health,.gear{font-size:18px}.gear strong{font-size:32px}
+.hint{font-size:15px;color:#a5b7bf}.stats div{font-size:16px}.stats strong{font-size:32px}
+#prompt{font-size:18px;bottom:124px;max-width:calc(100% - 24px);white-space:normal;text-align:center}
+#toast{font-size:18px;top:165px;max-width:calc(100% - 24px);text-align:center}
+#action{font-size:16px;width:260px;bottom:80px}
+@media(max-width:600px){.controls{grid-template-columns:110px 1fr;font-size:16px}.gear,#health{font-size:16px}.small{font-size:13px}.lead{font-size:17px}#toast{top:155px;font-size:16px}#prompt{font-size:17px}}
 </style>
 </head>
 <body>
@@ -22,7 +33,7 @@
 'use strict';
 // All balance and generation parameters are kept here; units are world pixels / seconds.
 const CONFIG = Object.freeze({
- floors:5, grid:5, room:300, wall:12, doorWidth:76, extraDoorChance:.22,
+ floors:3, grid:5, room:300, wall:12, doorWidth:76, extraDoorChance:.22,
  playerRadius:10, speed:150, sprint:1.7, hp:100, viewAngle:120*Math.PI/180,
  viewRooms:1.5, sightRays:190, cameraFollow:9, interactionRange:48,
  magSize:6, startingAmmo:6, pistolDamage:25, pistolSpread:2*Math.PI/180,
@@ -32,11 +43,15 @@ const CONFIG = Object.freeze({
  enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:.5,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:15,
- bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1
+ bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1,
+ colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
+  furniture:'#8c6238',furnitureEdge:'#e0b786',searched:'#58422d',searchedEdge:'#ac8b63',
+  furnitureDetail:'#d3a372',searchedDetail:'#937454'}),
+ roomFont:16, stairFont:26, exitFont:14
 });
 const $=id=>document.getElementById(id), canvas=$('world'), ctx=canvas.getContext('2d');
-const TAU=Math.PI*2, SIZE=CONFIG.grid*CONFIG.room;
-const game={mode:'MENU',floors:[],currentFloor:5,runTime:0,player:null,stats:null,effects:[],toast:null,interactable:null};
+const TAU=Math.PI*2, SIZE=CONFIG.grid*CONFIG.room, TOTAL_ROOMS=CONFIG.floors*CONFIG.grid**2;
+const game={mode:'MENU',floors:[],currentFloor:CONFIG.floors,runTime:0,player:null,stats:null,effects:[],toast:null,interactable:null};
 const keys=new Set(), mouse={x:0,y:0}, camera={x:0,y:0};
 let width=0,height=0,dpr=1,lastTime=0,controlsReturn='MENU',confirmRestart=false;
 const rand=(a,b)=>a+Math.random()*(b-a), int=(a,b)=>Math.floor(rand(a,b+1));
@@ -59,10 +74,10 @@ function rectHit(origin,dir,b,max=Infinity){
 function circleHit(o,d,c,r,max){const x=o.x-c.x,y=o.y-c.y,b=x*d.x+y*d.y,q=x*x+y*y-r*r,disc=b*b-q;if(disc<0)return null;const t=-b-Math.sqrt(disc);return t>=0&&t<=max?t:null;}
 function blockers(f){return [...f.walls,...f.doors.filter(d=>!d.open).map(d=>d.bounds),...f.furniture.map(o=>o.bounds)];}
 function cast(o,angle,max,boxes,targets=[]){
- const d={x:Math.cos(angle),y:Math.sin(angle)};let t=max,target=null;
- for(const b of boxes){const hit=rectHit(o,d,b,t);if(hit!==null&&hit<=t){t=hit;target=null;}}
- for(const c of targets){const hit=circleHit(o,d,c,c.radius,t);if(hit!==null&&hit<t){t=hit;target=c;}}
- return {x:o.x+d.x*t,y:o.y+d.y*t,t,target};
+ const d={x:Math.cos(angle),y:Math.sin(angle)};let t=max,target=null,blocker=null;
+ for(const b of boxes){const hit=rectHit(o,d,b,t);if(hit!==null&&hit<=t){t=hit;target=null;blocker=b;}}
+ for(const c of targets){const hit=circleHit(o,d,c,c.radius,t);if(hit!==null&&hit<t){t=hit;target=c;blocker=null;}}
+ return {x:o.x+d.x*t,y:o.y+d.y*t,t,target,blocker};
 }
 function lineClear(a,b,boxes){const len=distance(a,b);return cast(a,Math.atan2(b.y-a.y,b.x-a.x),len,boxes).t>=len-.01;}
 function overlapsCircle(p,r,b){return boxDistance(p,b)<r-.001;}
@@ -77,14 +92,14 @@ function moveActor(a,dx,dy,boxes,actors=[],bounds=null){
 }
 // 1. Shell, menus, loop and HUD.
 function showPanel(html){$('screen').classList.remove('hidden');$('panel').innerHTML=html;}
-const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>1 / 2</b><span>手槍 / 刀（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 5F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>書桌與衣櫥可各搜尋一次。補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
-function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A FIVE-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在五樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">125 ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
+const controlsHTML=`<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>1 / 2</b><span>手槍 / 刀（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。<br>視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>書桌與衣櫥可各搜尋一次。補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+function menu(){game.mode='MENU';$('hud').classList.add('hidden');showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div>`);}
 function pause(){if(game.mode!=='PLAYING')return;game.mode='PAUSED';keys.clear();pausePanel();}
 function pausePanel(){confirmRestart=false;showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button></div>`);}
 function resume(){game.mode='PLAYING';keys.clear();$('screen').classList.add('hidden');lastTime=performance.now();}
 function showControls(){controlsReturn=game.mode;if(game.mode==='PLAYING'){pause();controlsReturn='PAUSED';}showPanel(controlsHTML);}
 function formatTime(t){return `${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;}
-function finish(won){game.mode=won?'VICTORY':'GAME_OVER';keys.clear();$('hud').classList.add('hidden');const p=game.player;showPanel(`<div class="eyebrow">${won?'YOU MADE IT OUT / 逃出生天':'RUN TERMINATED / 永久死亡'}</div><h2>${won?'ESCAPED':'GAME OVER'}</h2><p class="lead">${won?'門外，是新的空氣。你活著離開了。':'黑暗吞沒了你的足跡。下一次，會是另一棟大樓。'}</p><div class="stats"><div>存活時間<strong>${formatTime(game.runTime)}</strong></div><div>擊殺數<strong>${game.stats.kills}</strong></div>${won?`<div>進入過的房間<strong>${game.stats.visitedRoomIds.size} / 125</strong></div><div>剩餘 HP<strong>${Math.ceil(p.hp)}</strong></div>`:`<div>到達最低樓層<strong>${game.stats.lowestFloor}F</strong></div>`}</div><div class="buttons"><button class="primary" data-do="start">全新開始 Restart ↗</button><button data-do="menu">主選單</button></div>`);}
+function finish(won){game.mode=won?'VICTORY':'GAME_OVER';keys.clear();$('hud').classList.add('hidden');const p=game.player;showPanel(`<div class="eyebrow">${won?'YOU MADE IT OUT / 逃出生天':'RUN TERMINATED / 永久死亡'}</div><h2>${won?'ESCAPED':'GAME OVER'}</h2><p class="lead">${won?'門外，是新的空氣。你活著離開了。':'黑暗吞沒了你的足跡。下一次，會是另一棟大樓。'}</p><div class="stats"><div>存活時間<strong>${formatTime(game.runTime)}</strong></div><div>擊殺數<strong>${game.stats.kills}</strong></div>${won?`<div>進入過的房間<strong>${game.stats.visitedRoomIds.size} / ${TOTAL_ROOMS}</strong></div><div>剩餘 HP<strong>${Math.ceil(p.hp)}</strong></div>`:`<div>到達最低樓層<strong>${game.stats.lowestFloor}F</strong></div>`}</div><div class="buttons"><button class="primary" data-do="start">全新開始 Restart ↗</button><button data-do="menu">主選單</button></div>`);}
 $('screen').addEventListener('click',e=>{const b=e.target.closest('[data-do]');if(!b)return;switch(b.dataset.do){case 'start':startGame();break;case 'menu':menu();break;case 'resume':resume();break;case 'controls':showControls();break;case 'back':controlsReturn==='MENU'?menu():pausePanel();break;case 'restart-confirm':confirmRestart=true;showPanel(`<div class="eyebrow">CONFIRM RESTART</div><h2>放棄這次逃生？</h2><p class="lead">目前進度將消失，整棟大樓會重新生成。</p><div class="buttons"><button data-do="resume">取消，繼續遊戲</button><button data-do="start">確認重新開始</button></div>`);break;}});
 // 2. Connected building, physical walls, reserved indoor routes and validation.
 function makeFloor(number){
@@ -131,19 +146,19 @@ function reachableRoom(f,id){
  return required.every(([x,y])=>seen.has(`${x},${y}`));
 }
 function validateBuilding(floors,spawn){
- const errors=[];if(floors.length!==5)errors.push('floor count');
+ const errors=[];if(floors.length!==CONFIG.floors)errors.push('floor count');
  for(const f of floors){const seen=new Set([0]),queue=[0];for(let i=0;i<queue.length;i++)for(const b of f.rooms[queue[i]].links)if(!seen.has(b)){seen.add(b);queue.push(b);}if(f.rooms.length!==25||seen.size!==25)errors.push(`F${f.number}: graph`);
   for(const r of f.rooms)if(!reachableRoom(f,r.id))errors.push(`F${f.number} R${r.id}: blocked`);
   for(const st of f.stairs){const dest=floors[st.toFloor-1].stairs.find(t=>t.id===st.id&&t.toFloor===f.number);if(!dest)errors.push('stairs pair');}
  }
- if(floors.reduce((n,f)=>n+f.stairs.length,0)!==8)errors.push('stair count');
+ if(floors.reduce((n,f)=>n+f.stairs.length,0)!==2*(CONFIG.floors-1))errors.push('stair count');
  if(floors.filter(f=>f.exit).length!==1||!floors[0].exit)errors.push('exit');
- if(spawn&&floors[4].enemies.some(e=>e.roomId===spawn.roomId))errors.push('unsafe spawn');
+ if(spawn&&floors[CONFIG.floors-1].enemies.some(e=>e.roomId===spawn.roomId))errors.push('unsafe spawn');
  return errors;
 }
 function buildBuilding(){
- const floors=Array.from({length:5},(_,i)=>makeFloor(i+1));
- for(let lower=1;lower<=4;lower++){
+ const floors=Array.from({length:CONFIG.floors},(_,i)=>makeFloor(i+1));
+ for(let lower=1;lower<CONFIG.floors;lower++){
   const a=floors[lower-1],b=floors[lower],ra=int(0,24),rb=int(0,24),id=`stairs-${lower}`;
   // Up/down anchors use separate sides of the center to remain individually selectable.
   const pa={...center(ra)},pb={...center(rb)};pa.x-=30;pb.x+=30;
@@ -153,15 +168,15 @@ function buildBuilding(){
  const exitRoom=int(0,24),exitPos=center(exitRoom);floors[0].exit={id:'exit',roomId:exitRoom,x:exitPos.x,y:exitPos.y-30};
  const spawnRoom=int(0,24),spawn={...center(spawnRoom),roomId:spawnRoom};
  for(const f of floors){placeFurniture(f);for(const room of f.rooms)if(!reachableRoom(f,room.id))f.furniture=f.furniture.filter(o=>o.roomId!==room.id);
-  for(const r of f.rooms){if(f.number===5&&r.id===spawnRoom)continue;if(Math.random()>CONFIG.enemyChance)continue;const c=center(r.id);f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,x:c.x,y:c.y+65,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0});}
+  for(const r of f.rooms){if(f.number===CONFIG.floors&&r.id===spawnRoom)continue;if(Math.random()>CONFIG.enemyChance)continue;const c=center(r.id);f.enemies.push({id:`${f.number}-e${r.id}`,roomId:r.id,x:c.x,y:c.y+65,radius:CONFIG.enemyRadius,hp:CONFIG.enemyHp,angle:rand(0,TAU),state:'patrol',aim:0,cooldown:0,target:null,flash:0});}
  }
  const errors=validateBuilding(floors,spawn);if(errors.length)throw new Error(errors.join(', '));
  return {floors,spawn};
 }
 function startGame(){
- const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=5;game.runTime=0;game.effects=[];game.toast=null;game.interactable=null;
+ const {floors,spawn}=buildBuilding();game.floors=floors;game.currentFloor=CONFIG.floors;game.runTime=0;game.effects=[];game.toast=null;game.interactable=null;
  game.player={x:spawn.x,y:spawn.y,radius:CONFIG.playerRadius,facing:-Math.PI/2,hp:CONFIG.hp,mag:CONFIG.magSize,reserveAmmo:CONFIG.startingAmmo,medkits:0,hasKnife:false,weapon:'pistol',action:null,knifeTimer:0,flash:0,hurt:0,sprinting:false};
- game.stats={kills:0,visitedRoomIds:new Set([`5:${spawn.roomId}`]),lowestFloor:5};keys.clear();resetCamera();resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
+ game.stats={kills:0,visitedRoomIds:new Set([`${CONFIG.floors}:${spawn.roomId}`]),lowestFloor:CONFIG.floors};keys.clear();resetCamera();resume();$('hud').classList.remove('hidden');notice('找到下樓梯，前往 1F 逃生出口。');
 }
 // 3. Shared doors, nearest legal interactions, one-time loot and persistent floors.
 function interactionCandidates(){
@@ -277,7 +292,12 @@ function update(dt){
 // 7. Strictly clipped rendering, pause/input lifecycle and final status screens.
 function drawRect(b,fill,stroke=null){ctx.fillStyle=fill;ctx.fillRect(b.x,b.y,b.w,b.h);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);}}
 function circle(x,y,r,color){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fillStyle=color;ctx.fill();}
-function drawFurniture(o){const b=o.bounds;drawRect(b,o.searched?'#302d28':'#675443',o.searched?'#625a4d':'#a18b70');ctx.strokeStyle=o.searched?'#534b40':'#8b755c';ctx.lineWidth=2;
+function furniturePalette(o){
+ const c=CONFIG.colors;
+ if(!o.searchable)return {fill:c.wall,edge:c.wallEdge,detail:c.wallEdge};
+ return o.searched?{fill:c.searched,edge:c.searchedEdge,detail:c.searchedDetail}:{fill:c.furniture,edge:c.furnitureEdge,detail:c.furnitureDetail};
+}
+function drawFurniture(o){const b=o.bounds,palette=furniturePalette(o);drawRect(b,palette.fill,palette.edge);ctx.strokeStyle=palette.detail;ctx.lineWidth=2;
  if(o.type==='desk'){ctx.strokeRect(b.x+7,b.y+7,b.w-14,b.h-14);}
  else if(o.type==='wardrobe'){ctx.beginPath();ctx.moveTo(b.x+b.w/2,b.y+3);ctx.lineTo(b.x+b.w/2,b.y+b.h-3);ctx.stroke();}
  else if(o.type==='sofa'){ctx.strokeRect(b.x+8,b.y+9,b.w-16,b.h-18);}
@@ -299,12 +319,12 @@ function render(){
  ctx.save();ctx.beginPath();ctx.moveTo(p.x,p.y);for(const pt of poly)ctx.lineTo(pt.x,pt.y);ctx.closePath();ctx.clip();
  ctx.fillStyle='#1c2225';ctx.fillRect(0,0,SIZE,SIZE);
  ctx.strokeStyle='#242c2f';ctx.lineWidth=1;ctx.beginPath();for(let i=0;i<=SIZE;i+=30){ctx.moveTo(i,0);ctx.lineTo(i,SIZE);ctx.moveTo(0,i);ctx.lineTo(SIZE,i);}ctx.stroke();
- for(const room of f.rooms){const c=center(room.id);ctx.fillStyle='#333c3f';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(`${f.number}${String(room.id+1).padStart(2,'0')}`,c.x,c.y+108);}
- for(const st of f.stairs){drawRect({x:st.x-17,y:st.y-18,w:34,h:36},'#2c4248','#76949e');ctx.fillStyle='#b0ced3';ctx.font='22px monospace';ctx.textAlign='center';ctx.fillText(st.toFloor>game.currentFloor?'↑':'↓',st.x,st.y+7);}
- if(f.exit){const o=f.exit;drawRect({x:o.x-25,y:o.y-10,w:50,h:20},'#315a45','#81bb8e');ctx.fillStyle='#c3e8c6';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText('EXIT',o.x,o.y+4);}
- for(const w of f.walls)drawRect(w,'#485156');
- for(const d of f.doors){if(!d.open)drawRect(d.bounds,'#85694c','#b29773');else{
-  ctx.save();ctx.translate(d.x,d.y);if(!d.vertical)ctx.rotate(Math.PI/2);ctx.strokeStyle='#a88e6a';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-CONFIG.doorWidth/2);ctx.lineTo(CONFIG.doorWidth*.7,-CONFIG.doorWidth/2);ctx.stroke();ctx.restore();
+ for(const room of f.rooms){const c=center(room.id);ctx.fillStyle='#68767d';ctx.font=`${CONFIG.roomFont}px monospace`;ctx.textAlign='center';ctx.fillText(`${f.number}${String(room.id+1).padStart(2,'0')}`,c.x,c.y+108);}
+ for(const st of f.stairs){drawRect({x:st.x-17,y:st.y-18,w:34,h:36},'#2c4248','#76949e');ctx.fillStyle='#b0ced3';ctx.font=`${CONFIG.stairFont}px monospace`;ctx.textAlign='center';ctx.fillText(st.toFloor>game.currentFloor?'↑':'↓',st.x,st.y+8);}
+ if(f.exit){const o=f.exit;drawRect({x:o.x-25,y:o.y-10,w:50,h:20},'#315a45','#81bb8e');ctx.fillStyle='#c3e8c6';ctx.font=`${CONFIG.exitFont}px monospace`;ctx.textAlign='center';ctx.fillText('EXIT',o.x,o.y+5);}
+ for(const w of f.walls)drawRect(w,CONFIG.colors.wall);
+ for(const d of f.doors){if(!d.open)drawRect(d.bounds,CONFIG.colors.door,CONFIG.colors.doorEdge);else{
+  ctx.save();ctx.translate(d.x,d.y);if(!d.vertical)ctx.rotate(Math.PI/2);ctx.strokeStyle=CONFIG.colors.doorEdge;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,-CONFIG.doorWidth/2);ctx.lineTo(CONFIG.doorWidth*.7,-CONFIG.doorWidth/2);ctx.stroke();ctx.restore();
  }}
  for(const o of f.furniture)drawFurniture(o);
  for(const e of f.enemies)drawActor(e);
@@ -314,7 +334,16 @@ function render(){
  const grad=ctx.createRadialGradient(p.x,p.y,30,p.x,p.y,CONFIG.room*CONFIG.viewRooms);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.65,'rgba(0,0,0,.12)');grad.addColorStop(1,'rgba(0,0,0,.85)');ctx.fillStyle=grad;ctx.fillRect(p.x-500,p.y-500,1000,1000);
  ctx.restore();
  // The near-facing obstacle edge is visible exactly at the first ray intersection.
- ctx.strokeStyle='#637279';ctx.lineWidth=1.2;ctx.beginPath();for(let i=1;i<poly.length;i++)if(poly[i].t<CONFIG.room*CONFIG.viewRooms-.1&&poly[i-1].t<CONFIG.room*CONFIG.viewRooms-.1&&distance(poly[i],poly[i-1])<12){ctx.moveTo(poly[i-1].x,poly[i-1].y);ctx.lineTo(poly[i].x,poly[i].y);}ctx.stroke();
+ const surfaceColors=new Map(f.furniture.map(o=>[o.bounds,furniturePalette(o).edge]));
+ for(const d of f.doors)surfaceColors.set(d.bounds,CONFIG.colors.doorEdge);
+ ctx.lineWidth=2.5;
+ for(let i=1;i<poly.length;i++){
+  const a=poly[i-1],b=poly[i];
+  if(a.blocker&&a.blocker===b.blocker&&distance(a,b)<12){
+   ctx.strokeStyle=surfaceColors.get(a.blocker)||CONFIG.colors.wallEdge;
+   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+ }
  drawActor(p,true);ctx.restore();
  // Mouse crosshair is input UI, never an indicator of concealed entities.
  if(game.mode==='PLAYING'){ctx.strokeStyle='#8cabb3';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(mouse.x-6,mouse.y);ctx.lineTo(mouse.x-2,mouse.y);ctx.moveTo(mouse.x+2,mouse.y);ctx.lineTo(mouse.x+6,mouse.y);ctx.moveTo(mouse.x,mouse.y-6);ctx.lineTo(mouse.x,mouse.y-2);ctx.moveTo(mouse.x,mouse.y+2);ctx.lineTo(mouse.x,mouse.y+6);ctx.stroke();}
