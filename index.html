@@ -490,6 +490,36 @@
       letter-spacing: 2px
     }
 
+    .manual .eyebrow {
+      font-size: calc(14px*var(--manual-scale, 1));
+      margin-bottom: calc(24px*var(--manual-scale, 1))
+    }
+
+    .manual h2 {
+      font-size: calc(40px*var(--manual-scale, 1));
+      margin-bottom: calc(24px*var(--manual-scale, 1))
+    }
+
+    .manual .controls {
+      font-size: calc(18px*var(--manual-scale, 1));
+      grid-template-columns: calc(170px*var(--manual-scale, 1)) 1fr;
+      gap: calc(12px*var(--manual-scale, 1))
+    }
+
+    .manual .note {
+      font-size: calc(16px*var(--manual-scale, 1));
+      margin-top: calc(22px*var(--manual-scale, 1))
+    }
+
+    .manual .buttons {
+      margin: calc(28px*var(--manual-scale, 1)) 0
+    }
+
+    .manual button {
+      font-size: calc(18px*var(--manual-scale, 1));
+      padding: calc(14px*var(--manual-scale, 1)) calc(23px*var(--manual-scale, 1))
+    }
+
     @media(max-width:600px) {
       .minimap {
         right: 12px;
@@ -660,7 +690,7 @@
     }
     // 1. Shell, menus, loop and HUD.
     function showPanel(html) { $('screen').classList.remove('hidden'); $('panel').innerHTML = html; }
-    const controlsHTML = `<div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。開局房間與每次下樓抵達的房間不生成敵人。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次，也可能沒有物資。<br>近戰從敵人視野外命中可一擊必殺。<br>角色周圍的短弧提示視野外腳步的大致方位；守衛移動才出現，家具會減弱提示，牆壁與關門會隔絕。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div>`;
+    const controlsHTML = `<div class="manual"><div class="eyebrow">FIELD MANUAL / 操作說明</div><h2>看清，再前進。</h2><div class="controls"><b>W A S D</b><span>移動；Shift 衝刺，中斷換彈與治療</span><b>Space</b><span>朝移動方向突進；中斷換彈與治療，突進中不能攻擊</span><b>滑鼠 / 左鍵</b><span>瞄準 / 單擊攻擊（按住不連射）</span><b>E</b><span>操作最近的門、搜尋家具、使用樓梯或逃出</span><b>R / F</b><span>換彈 1.5 秒 / 治療 2 秒，可正常走路</span><b>V</b><span>切換刀／手槍（需搜尋取得）；切武器中斷動作</span><b>Esc</b><span>暫停 / 恢復</span></div><p class="note">從 ${CONFIG.floors}F 尋找下樓梯，到 1F 綠色出口旁按 E。擊殺不是通關條件。開局房間與每次下樓抵達的房間不生成敵人。<br>主畫面視野之外完全黑暗；家具、牆壁與關門會擋住視線及子彈。守衛不會離開原房。<br>小地圖記錄目前樓層已走過的房間，以及親眼看見的門、樓梯與出口。<br>初始持刀；搜尋書桌與衣櫥可找到手槍、彈藥或補血藥。每件只能搜一次，也可能沒有物資。<br>近戰從敵人視野外命中可一擊必殺。<br>角色周圍的短弧提示視野外腳步的大致方位；守衛移動才出現，家具會減弱提示，牆壁與關門會隔絕。<br>補血藥完成治療才消耗；衝刺會中斷治療。</p><div class="buttons"><button data-do="back">返回 Back</button></div></div>`;
     function menu() { game.mode = 'MENU'; $('hud').classList.add('hidden'); showPanel(`<div class="eyebrow">A ${CONFIG.floors}-FLOOR SURVIVAL / 01</div><h1>BLIND<br>SPOT<span style="color:#80bdcf">.</span></h1><p class="lead">黑暗裡，活著離開才是目標。<br>你在 ${CONFIG.floors} 樓。找到樓梯，穿過未知的房間，<br>從一樓逃出這棟大樓。</p><div class="buttons"><button class="primary" data-do="start">開始遊戲 &nbsp; Start Game ↗</button><button data-do="controls">操作說明 &nbsp; Controls</button></div><div class="footer">${TOTAL_ROOMS} ROOMS &nbsp; / &nbsp; ONE WAY OUT &nbsp; / &nbsp; NO SECOND CHANCES</div><div class="menu-version">${GAME_VERSION}</div>`); }
     function pause() { if (game.mode !== 'PLAYING') return; game.mode = 'PAUSED'; sound.pause(); keys.clear(); pausePanel(); }
     function pausePanel() { confirmRestart = false; showPanel(`<div class="eyebrow">SIGNAL HELD / 遊戲暫停</div><h2>PAUSED</h2><p class="lead">時間已停止。準備好再走。</p><div class="buttons"><button class="primary" data-do="resume">繼續 Resume</button><button data-do="controls">操作說明 Controls</button><button data-do="restart-confirm">重新開始 Restart</button><button data-do="menu">回到主選單 Main Menu</button></div>`); }
@@ -1132,7 +1162,7 @@
       $('toast').classList.toggle('hidden', !game.toast); if (game.toast) $('toast').textContent = game.toast.text;
       $('action').classList.toggle('hidden', !p.action); if (p.action) { $('action-label').textContent = p.action.type === 'reload' ? '換彈中 RELOADING' : '治療中 HEALING'; $('action-fill').style.width = `${p.action.elapsed / p.action.duration * 100}%`; }
     }
-    function resize() { width = window.innerWidth; height = window.innerHeight; dpr = Math.min(window.devicePixelRatio || 1, 2); canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); const zoom = viewZoom(); document.documentElement.style.setProperty('--hud-scale', Math.max(1, zoom / 1.25)); document.documentElement.style.setProperty('--corner-scale', Math.min(1.3, Math.max(1, zoom / 1.75))); document.documentElement.style.setProperty('--menu-scale', Math.min(1.5, Math.max(1, zoom / 1.5))); if (game.player) resetCamera(); }
+    function resize() { width = window.innerWidth; height = window.innerHeight; dpr = Math.min(window.devicePixelRatio || 1, 2); canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); const zoom = viewZoom(), menuScale = Math.min(1.5, Math.max(1, zoom / 1.5)); document.documentElement.style.setProperty('--hud-scale', Math.max(1, zoom / 1.25)); document.documentElement.style.setProperty('--corner-scale', Math.min(1.3, Math.max(1, zoom / 1.75))); document.documentElement.style.setProperty('--menu-scale', menuScale); document.documentElement.style.setProperty('--manual-scale', Math.min(menuScale, Math.max(.8, (height - 64) / 770))); if (game.player) resetCamera(); }
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'KeyE', 'KeyR', 'KeyF', 'KeyV', 'Escape', 'Space'].includes(e.code)) e.preventDefault();
