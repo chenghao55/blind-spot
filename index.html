@@ -358,6 +358,18 @@ function damageEnemy(e,amount){
  e.alerted=true;e.state='aim';e.target=null;
  e.angle=Math.atan2(game.player.y-e.y,game.player.x-e.x);
 }
+function circleIntersectsSweep(sweep,target){
+ const dx=target.x-sweep.x,dy=target.y-sweep.y,length=Math.hypot(dx,dy);
+ const offset=angleDiff(Math.atan2(dy,dx),sweep.angle),half=sweep.arc/2;
+ if(Math.abs(offset)<=half)return length<=sweep.range+target.radius;
+ const edge=sweep.angle+Math.sign(offset)*half,ux=Math.cos(edge),uy=Math.sin(edge);
+ const projection=clamp(dx*ux+dy*uy,0,sweep.range);
+ return Math.hypot(dx-ux*projection,dy-uy*projection)<=target.radius;
+}
+function sweepRayAngle(sweep,target){
+ const offset=angleDiff(Math.atan2(target.y-sweep.y,target.x-sweep.x),sweep.angle);
+ return sweep.angle+clamp(offset,-sweep.arc/2,sweep.arc/2);
+}
 function attack(){
  if(game.mode!=='PLAYING')return;const p=game.player;updateFacing();
  if(p.dash||sprintHeld()&&moving()||p.action)return;
@@ -370,10 +382,13 @@ function attack(){
   if(hit.target)damageEnemy(hit.target,CONFIG.pistolDamage);game.effects.push({type:'bullet',x:p.x,y:p.y,tx:hit.x,ty:hit.y,time:CONFIG.bulletLife,enemy:false});
  }else if(p.knifeTimer<=0){
   sound.play('knife',CONFIG.knifeVolume);
-  p.knifeTimer=CONFIG.knifeCooldown;game.effects.push({type:'knife',x:p.x,y:p.y,angle:p.facing,time:.16});
-  // Sweep rays to each candidate's near surface; nearest obstacle/actor wins.
-  const candidates=enemies.filter(e=>distance(p,e)<=CONFIG.knifeRange+e.radius&&Math.abs(angleDiff(Math.atan2(e.y-p.y,e.x-p.x),p.facing))<=CONFIG.knifeArc/2).sort((a,b)=>distance(p,a)-distance(p,b));
-  const e=candidates.find(e=>cast(p,Math.atan2(e.y-p.y,e.x-p.x),CONFIG.knifeRange,boxes,enemies).target===e);
+  p.knifeTimer=CONFIG.knifeCooldown;
+  const sweep={type:'knife',x:p.x,y:p.y,angle:p.facing,range:CONFIG.knifeRange,arc:CONFIG.knifeArc,time:.16};
+  game.effects.push(sweep);
+  // Enemy bodies must overlap the same sector shown by the slash. A ray clamped
+  // to that sector then prevents attacks through walls or nearer actors.
+  const candidates=enemies.filter(e=>circleIntersectsSweep(sweep,e)).sort((a,b)=>distance(p,a)-a.radius-(distance(p,b)-b.radius));
+  const e=candidates.find(e=>cast(p,sweepRayAngle(sweep,e),sweep.range,boxes,enemies).target===e);
   if(e){
    // Evaluate the guard's view before damage can turn it toward the attacker.
    const stealth=CONFIG.knifeStealthKill&&!inEnemyVision(e,p,boxes);
@@ -559,7 +574,7 @@ function render(){
  }}
  for(const o of f.furniture)drawFurniture(o);
  for(const e of f.enemies)drawActor(e);
- for(const e of game.effects){ctx.strokeStyle=e.enemy?'#e2a178':'#e4d8b2';ctx.lineWidth=1.3;ctx.beginPath();if(e.type==='bullet'){ctx.moveTo(e.x,e.y);ctx.lineTo(e.tx,e.ty);}else{ctx.strokeStyle='#b1d4dc';ctx.arc(e.x,e.y,CONFIG.knifeRange,e.angle-CONFIG.knifeArc/2,e.angle+CONFIG.knifeArc/2);}ctx.stroke();}
+ for(const e of game.effects){ctx.strokeStyle=e.enemy?'#e2a178':'#e4d8b2';ctx.lineWidth=1.3;ctx.beginPath();if(e.type==='bullet'){ctx.moveTo(e.x,e.y);ctx.lineTo(e.tx,e.ty);}else{ctx.strokeStyle='#b1d4dc';ctx.arc(e.x,e.y,e.range,e.angle-e.arc/2,e.angle+e.arc/2);}ctx.stroke();}
  if(p.flash>0){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.facing);ctx.fillStyle='#f4d49b';ctx.beginPath();ctx.moveTo(23,-2);ctx.lineTo(34,-5);ctx.lineTo(30,1);ctx.lineTo(34,5);ctx.lineTo(23,2);ctx.fill();ctx.restore();}
  // A range falloff remains inside the visibility clip and never reveals unseen geometry.
  const grad=ctx.createRadialGradient(p.x,p.y,30,p.x,p.y,CONFIG.room*CONFIG.viewRooms);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.65,'rgba(0,0,0,.12)');grad.addColorStop(1,'rgba(0,0,0,.85)');ctx.fillStyle=grad;ctx.fillRect(p.x-500,p.y-500,1000,1000);
