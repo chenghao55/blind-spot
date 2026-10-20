@@ -9,20 +9,21 @@
 :root{color-scheme:dark;--ink:#eef2ee;--muted:#8e9b9f;--blue:#80bdcf;--line:#303b40;--green:#a1c6a1}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--ink);font-family:Arial,"Microsoft JhengHei",sans-serif}canvas{display:block;width:100%;height:100%;cursor:crosshair}button{font:inherit;cursor:pointer;color:var(--ink);background:#162025;border:1px solid #43545b;padding:14px 23px;text-align:left;transition:background .15s}button:hover,button:focus-visible{background:#2b404a;outline:1px solid var(--blue)}button.primary{background:#a8c7ce;color:#0b171c;border-color:#a8c7ce;font-weight:bold}.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,9,12,.93);padding:32px;overflow:auto}.screen.hidden,.hidden{display:none!important}.panel{max-width:760px;width:100%}.eyebrow{font-size:11px;letter-spacing:4px;color:var(--blue);margin-bottom:24px}h1{font-size:clamp(48px,9vw,100px);line-height:.9;letter-spacing:-5px;margin:0 0 24px;font-weight:900}h2{font-size:40px;letter-spacing:1px;margin:0 0 24px}.lead{color:#aeb9ba;line-height:1.9;max-width:510px;font-size:14px}.buttons{display:flex;gap:12px;margin:28px 0;flex-wrap:wrap}.footer{border-top:1px solid var(--line);padding-top:18px;margin-top:35px;font-size:11px;letter-spacing:2px;color:var(--muted)}.controls{display:grid;grid-template-columns:150px 1fr;gap:12px;font-size:14px;line-height:1.6}.controls b{color:var(--blue);font-family:monospace}.controls span{color:#b3bfc2}.note{font-size:12px;color:#8e9b9f;line-height:1.8;margin-top:22px}#hud{position:absolute;inset:0;pointer-events:none;padding:25px 28px;display:flex;flex-direction:column;justify-content:space-between}.hud-top,.hud-bottom{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.badge{background:rgba(8,13,17,.9);border:1px solid #344149;padding:13px 16px}.floor{font-size:27px;font-weight:bold;letter-spacing:2px}.small{font-size:10px;letter-spacing:2px;color:var(--muted)}.hp{margin-top:8px;width:145px;height:3px;background:#29333b}.hp i{display:block;height:100%;background:var(--blue)}#health{font:13px monospace;display:block;margin-top:10px}.gear{text-align:right;font:13px monospace;line-height:1.9}.gear strong{font-size:24px;color:#dce8eb}.hud-bottom{align-items:flex-end}.hint{font-size:11px;line-height:1.9;color:#819298}#prompt{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);padding:12px 20px;background:#14232a;border:1px solid #5b899a;font-size:13px;white-space:nowrap}#toast{position:absolute;left:50%;top:95px;transform:translateX(-50%);color:#d5e5df;background:rgba(12,21,24,.9);padding:10px 18px;font-size:13px}#action{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);width:220px;font-size:12px;text-align:center;color:#cbd9dc}#action .track{height:3px;background:#29353a;margin-top:10px}#action-fill{height:100%;background:var(--blue)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid var(--line);padding-top:24px;margin-top:28px}.stats div{color:var(--muted);font-size:12px}.stats strong{display:block;font-size:25px;color:var(--ink);margin-top:8px}@media(max-width:600px){#hud{padding:12px}.hint{display:none}.controls{grid-template-columns:110px 1fr;font-size:12px}h1{letter-spacing:-3px}.badge{padding:9px}.screen{padding:22px}.gear{font-size:11px}}
 /* Readable UI sizes, including compact windows. */
 html,body{font-size:18px}
-.panel{max-width:800px}.eyebrow,.footer{font-size:14px}
-.lead{font-size:18px;max-width:640px}.controls{font-size:18px;grid-template-columns:170px 1fr}
-.note{font-size:16px}.small{font-size:14px;letter-spacing:1.5px}
-.floor{font-size:32px}#health,.gear{font-size:18px}.gear strong{font-size:32px}
-.hint{font-size:15px;color:#a5b7bf}.stats div{font-size:16px}.stats strong{font-size:32px}
-#prompt{font-size:18px;bottom:124px;max-width:calc(100% - 24px);white-space:normal;text-align:center}
-#toast{font-size:18px;top:165px;max-width:calc(100% - 24px);text-align:center}
-#action{font-size:16px;width:260px;bottom:80px}
-@media(max-width:600px){.controls{grid-template-columns:110px 1fr;font-size:16px}.gear,#health{font-size:16px}.small{font-size:13px}.lead{font-size:17px}#toast{top:155px;font-size:16px}#prompt{font-size:17px}}
+.panel{max-width:calc(800px*var(--menu-scale,1))}.eyebrow,.footer{font-size:calc(14px*var(--menu-scale,1))}
+.panel h1{font-size:clamp(calc(48px*var(--menu-scale,1)),9vw,calc(100px*var(--menu-scale,1)))}.panel h2{font-size:calc(40px*var(--menu-scale,1))}.panel button{font-size:calc(18px*var(--menu-scale,1));padding:calc(14px*var(--menu-scale,1)) calc(23px*var(--menu-scale,1))}
+.lead{font-size:calc(18px*var(--menu-scale,1));max-width:calc(640px*var(--menu-scale,1))}.controls{font-size:calc(18px*var(--menu-scale,1));grid-template-columns:calc(170px*var(--menu-scale,1)) 1fr}
+.note{font-size:calc(16px*var(--menu-scale,1))}.small{font-size:calc(14px*var(--hud-scale,1));letter-spacing:1.5px}
+.floor{font-size:calc(32px*var(--hud-scale,1))}#health{font-size:calc(18px*var(--hud-scale,1))}.gear{font-size:calc(18px*var(--corner-scale,1))}.gear strong{font-size:calc(32px*var(--corner-scale,1))}
+.hint{font-size:calc(15px*var(--corner-scale,1));color:#a5b7bf}.stats div{font-size:calc(16px*var(--menu-scale,1))}.stats strong{font-size:calc(32px*var(--menu-scale,1))}
+#prompt{font-size:calc(18px*var(--corner-scale,1));bottom:124px;max-width:calc(100% - 24px);white-space:normal;text-align:center}
+#toast{font-size:calc(18px*var(--corner-scale,1));top:165px;max-width:calc(100% - 24px);text-align:center}
+#action{font-size:calc(16px*var(--corner-scale,1));width:260px;bottom:80px}
+@media(max-width:600px){.controls{grid-template-columns:110px 1fr;font-size:16px}.gear{font-size:calc(16px*var(--corner-scale,1))}#health{font-size:calc(16px*var(--hud-scale,1))}.small{font-size:calc(13px*var(--hud-scale,1))}.lead{font-size:17px}#toast{top:155px;font-size:calc(16px*var(--corner-scale,1))}#prompt{font-size:calc(17px*var(--corner-scale,1))}}
 .minimap{position:absolute;right:28px;bottom:98px;padding:12px;background:rgba(8,13,17,.94);border:1px solid #344149}
-.minimap-title{font-size:15px;color:#d0dde1;margin-bottom:10px}
+.minimap-title{font-size:calc(15px*var(--hud-scale,1));color:#d0dde1;margin-bottom:10px}
 #minimap{width:var(--minimap-size,180px);height:var(--minimap-size,180px);cursor:default}
-.minimap-legend{font-size:13px;line-height:1.8;color:#a5b7bf;margin-top:8px}
-@media(max-width:600px){.minimap{right:12px;top:165px;bottom:auto;padding:9px}#minimap{width:140px;height:140px}.minimap-legend{font-size:12px}.minimap-title{font-size:14px}}
+.minimap-legend{font-size:calc(13px*var(--hud-scale,1));line-height:1.8;color:#a5b7bf;margin-top:8px}
+@media(max-width:600px){.minimap{right:12px;top:165px;bottom:auto;padding:9px}#minimap{width:140px;height:140px}.minimap-legend{font-size:calc(12px*var(--hud-scale,1))}.minimap-title{font-size:calc(14px*var(--hud-scale,1))}}
 </style>
 </head>
 <body>
@@ -51,7 +52,7 @@ const CONFIG = Object.freeze({
  safeStairArrivalRooms:true, enemyChance:.43, enemyRadius:11, enemyHp:50, enemySpeed:43,
  enemyViewAngle:120*Math.PI/180, enemyViewRooms:1, enemyAimTime:1,
  enemyInterval:1.5, enemySpread:6*Math.PI/180, enemyDamage:30,
- bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04, zoom:1.25,
+ bulletLife:.09, flashLife:.08, toastTime:2.5, maxFrame:.04,
  colors:Object.freeze({wall:'#435562',wallEdge:'#718d9f',door:'#b87930',doorEdge:'#ffd08a',
   furniture:'#8c6238',furnitureEdge:'#e0b786',furnitureDetail:'#d3a372'}),
  roomFont:16, stairFont:26, exitFont:14, minimapSize:180,
@@ -334,7 +335,8 @@ function visibility(p,boxes){
  return angles.map(a=>cast(p,p.facing+a,range,boxes));
 }
 function resetCamera(){camera.x=game.player.x;camera.y=game.player.y;}
-function updateFacing(){const p=game.player;p.facing=Math.atan2((mouse.y-height/2)/CONFIG.zoom+camera.y-p.y,(mouse.x-width/2)/CONFIG.zoom+camera.x-p.x);}
+function viewZoom(){return Math.max(width,height)/(2*CONFIG.room*CONFIG.viewRooms);}
+function updateFacing(){const p=game.player,zoom=viewZoom();p.facing=Math.atan2((mouse.y-height/2)/zoom+camera.y-p.y,(mouse.x-width/2)/zoom+camera.x-p.x);}
 // 5. Hitscan, knife sweep, deferred resource consumption and interruptions.
 function beginAction(type){
  const p=game.player;if(p.action){notice('請先完成目前動作');return;}
@@ -529,7 +531,7 @@ function drawActor(a,player=false){
 }
 function drawFootstepHints(){
  if(game.mode!=='PLAYING'&&game.mode!=='PAUSED')return;
- const p=game.player,x=width/2+(p.x-camera.x)*CONFIG.zoom,y=height/2+(p.y-camera.y)*CONFIG.zoom;
+ const p=game.player,zoom=viewZoom(),x=width/2+(p.x-camera.x)*zoom,y=height/2+(p.y-camera.y)*zoom;
  ctx.save();ctx.lineCap='round';ctx.strokeStyle='#d6c8a3';
  for(const hint of game.footsteps){
   const age=1-hint.time/CONFIG.footstepHintLife,angle=hint.sector*TAU/CONFIG.footstepHintSectors;
@@ -543,8 +545,8 @@ function drawFootstepHints(){
 function render(){
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);
  if(!game.player||game.mode==='MENU')return;
- const p=game.player,f=floorNow(),boxes=blockers(f),poly=visibility(p,boxes);
- ctx.save();ctx.translate(width/2,height/2);ctx.scale(CONFIG.zoom,CONFIG.zoom);ctx.translate(-camera.x,-camera.y);
+ const p=game.player,f=floorNow(),boxes=blockers(f),poly=visibility(p,boxes),zoom=viewZoom();
+ ctx.save();ctx.translate(width/2,height/2);ctx.scale(zoom,zoom);ctx.translate(-camera.x,-camera.y);
  ctx.save();ctx.beginPath();ctx.moveTo(p.x,p.y);for(const pt of poly)ctx.lineTo(pt.x,pt.y);ctx.closePath();ctx.clip();
  ctx.fillStyle='#1c2225';ctx.fillRect(0,0,SIZE,SIZE);
  ctx.strokeStyle='#242c2f';ctx.lineWidth=1;ctx.beginPath();for(let i=0;i<=SIZE;i+=30){ctx.moveTo(i,0);ctx.lineTo(i,SIZE);ctx.moveTo(0,i);ctx.lineTo(SIZE,i);}ctx.stroke();
@@ -587,7 +589,7 @@ function updateHUD(){
  $('toast').classList.toggle('hidden',!game.toast);if(game.toast)$('toast').textContent=game.toast.text;
  $('action').classList.toggle('hidden',!p.action);if(p.action){$('action-label').textContent=p.action.type==='reload'?'換彈中 RELOADING':'治療中 HEALING';$('action-fill').style.width=`${p.action.elapsed/p.action.duration*100}%`;}
 }
-function resize(){width=window.innerWidth;height=window.innerHeight;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);if(game.player)resetCamera();}
+function resize(){width=window.innerWidth;height=window.innerHeight;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);const zoom=viewZoom();document.documentElement.style.setProperty('--hud-scale',Math.max(1,zoom/1.25));document.documentElement.style.setProperty('--corner-scale',Math.min(1.3,Math.max(1,zoom/1.75)));document.documentElement.style.setProperty('--menu-scale',Math.min(1.5,Math.max(1,zoom/1.5)));if(game.player)resetCamera();}
 window.addEventListener('resize',resize);
 window.addEventListener('keydown',e=>{
  if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyE','KeyR','KeyF','KeyV','Escape','Space'].includes(e.code))e.preventDefault();
