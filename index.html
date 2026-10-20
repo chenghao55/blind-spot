@@ -589,7 +589,8 @@
       furniturePlacementAttempts: 50, furnitureGap: 26, furnitureWallMargin: 26,
       furnitureAnchorClearance: 20, doorwayCoverChance: .8, enemySpawnSamples: 48,
       safeStairArrivalRooms: true, enemyChance: .43, enemyRadius: 11, enemyHp: 50, enemySpeed: 43,
-      enemyViewAngle: 120 * Math.PI / 180, enemyViewRooms: 1, enemyAimTime: 1,
+      enemyViewAngle: 120 * Math.PI / 180, enemyViewRooms: 1, enemyAimTime: .5,
+      enemyTurnSpeed: 300 * Math.PI / 180, enemyHitTurnSpeed: 600 * Math.PI / 180, enemyAimTolerance: 10 * Math.PI / 180, enemyAlertGrace: .4,
       enemyInterval: 1.5, enemySpread: 6 * Math.PI / 180, enemyDamage: 30,
       bulletLife: .09, flashLife: .08, toastTime: 2.5, maxFrame: .04,
       colors: Object.freeze({
@@ -818,7 +819,7 @@
             if (cover > best) { position = q; best = cover; }
           }
           if (!position) continue;
-          f.enemies.push({ id: `${f.number}-e${r.id}`, roomId: r.id, ...position, radius: CONFIG.enemyRadius, hp: CONFIG.enemyHp, angle: rand(0, TAU), state: 'patrol', aim: 0, cooldown: 0, target: null, flash: 0, stepDistance: rand(0, CONFIG.footstepStride) });
+          f.enemies.push({ id: `${f.number}-e${r.id}`, roomId: r.id, ...position, radius: CONFIG.enemyRadius, hp: CONFIG.enemyHp, angle: rand(0, TAU), state: 'patrol', aim: 0, cooldown: 0, target: null, lastSeen: null, lostSight: 0, hitAlert: false, flash: 0, stepDistance: rand(0, CONFIG.footstepStride) });
         }
       }
       const errors = validateBuilding(floors, spawn); if (errors.length) throw new Error(errors.join(', '));
@@ -903,8 +904,8 @@
       // A hit reveals the attacker even from behind or beyond normal detection range.
       // Preserve existing aim/cooldown so repeated hits cannot delay a guard's shot.
       if (e.state !== 'aim') e.aim = 0;
-      e.alerted = true; e.state = 'aim'; e.target = null;
-      e.angle = Math.atan2(game.player.y - e.y, game.player.x - e.x);
+      e.alerted = true; e.state = 'aim'; e.target = null; e.hitAlert = true;
+      e.lastSeen = { x: game.player.x, y: game.player.y }; e.lostSight = CONFIG.enemyAlertGrace;
     }
     function circleIntersectsSweep(sweep, target) {
       const dx = target.x - sweep.x, dy = target.y - sweep.y, length = Math.hypot(dx, dy);
@@ -956,6 +957,10 @@
         && Math.abs(angleDiff(Math.atan2(target.y - e.y, target.x - e.x), e.angle)) <= CONFIG.enemyViewAngle / 2
         && lineClear(e, target, boxes);
     }
+    function turnTowards(current, target, amount) {
+      const angle = current + clamp(angleDiff(target, current), -amount, amount);
+      return Math.atan2(Math.sin(angle), Math.cos(angle));
+    }
     function footstepCue(e, boxes) {
       const p = game.player, range = CONFIG.room * CONFIG.hearingRooms, length = distance(p, e);
       if (length >= range) return null;
@@ -985,18 +990,30 @@
         if (e.hp <= 0) continue; e.flash = Math.max(0, e.flash - dt); e.cooldown = Math.max(0, e.cooldown - dt);
         const angle = Math.atan2(p.y - e.y, p.x - e.x), sees = inEnemyVision(e, p, boxes) || (e.alerted && lineClear(e, p, boxes));
         if (sees) {
-          e.state = 'aim'; e.angle = angle; e.aim += dt; if (e.aim >= CONFIG.enemyAimTime && e.cooldown <= 0) {
+          e.alerted = true; e.state = 'aim'; e.target = null; e.lastSeen = { x: p.x, y: p.y }; e.lostSight = CONFIG.enemyAlertGrace;
+          e.angle = turnTowards(e.angle, angle, (e.hitAlert ? CONFIG.enemyHitTurnSpeed : CONFIG.enemyTurnSpeed) * dt);
+          const aligned = Math.abs(angleDiff(angle, e.angle)) <= CONFIG.enemyAimTolerance;
+          if (aligned) e.hitAlert = false;
+          if (aligned) e.aim += dt; else e.aim = 0;
+          if (aligned && e.aim >= CONFIG.enemyAimTime && e.cooldown <= 0) {
             e.cooldown = CONFIG.enemyInterval; e.flash = CONFIG.flashLife;
             sound.play('shot', CONFIG.enemyShotVolume);
             const targets = [p, ...f.enemies.filter(a => a !== e && a.hp > 0)], hit = cast(e, angle + rand(-CONFIG.enemySpread, CONFIG.enemySpread), SIZE * 1.5, boxes, targets);
             game.effects.push({ type: 'bullet', x: e.x, y: e.y, tx: hit.x, ty: hit.y, time: CONFIG.bulletLife, enemy: true }); if (hit.target === p) hurtPlayer(CONFIG.enemyDamage);
             if (game.mode !== 'PLAYING') return;
           }
+        } else if (e.alerted && e.lostSight > 0) {
+          e.state = 'aim'; e.aim = 0; e.lostSight = Math.max(0, e.lostSight - dt);
+          if (e.lastSeen) {
+            const lastSeenAngle = Math.atan2(e.lastSeen.y - e.y, e.lastSeen.x - e.x);
+            e.angle = turnTowards(e.angle, lastSeenAngle, (e.hitAlert ? CONFIG.enemyHitTurnSpeed : CONFIG.enemyTurnSpeed) * dt);
+            if (Math.abs(angleDiff(lastSeenAngle, e.angle)) <= CONFIG.enemyAimTolerance) e.hitAlert = false;
+          }
         } else {
-          e.state = 'patrol'; e.aim = 0; e.alerted = false;
+          e.state = 'patrol'; e.aim = 0; e.alerted = false; e.lastSeen = null; e.lostSight = 0; e.hitAlert = false;
           const c = center(e.roomId), bounds = { x: c.x - CONFIG.room / 2 + CONFIG.wall, y: c.y - CONFIG.room / 2 + CONFIG.wall, w: CONFIG.room - 2 * CONFIG.wall, h: CONFIG.room - 2 * CONFIG.wall };
           if (!e.target || distance(e, e.target) < 8) { let target = null; for (let i = 0; i < 12; i++) { const q = { x: c.x + rand(-110, 110), y: c.y + rand(-110, 110) }; if (canStand(q, e.radius, boxes) && lineClear(e, q, boxes)) { target = q; break; } } e.target = target; }
-          if (e.target) { e.angle = Math.atan2(e.target.y - e.y, e.target.x - e.x); const before = { x: e.x, y: e.y }; moveActor(e, Math.cos(e.angle) * CONFIG.enemySpeed * dt, Math.sin(e.angle) * CONFIG.enemySpeed * dt, boxes, [p, ...f.enemies], bounds); const travelled = distance(before, e); guardFootsteps(e, travelled, boxes); if (travelled < .02) e.target = null; }
+          if (e.target) { const targetAngle = Math.atan2(e.target.y - e.y, e.target.x - e.x); e.angle = turnTowards(e.angle, targetAngle, CONFIG.enemyTurnSpeed * dt); const before = { x: e.x, y: e.y }; moveActor(e, Math.cos(e.angle) * CONFIG.enemySpeed * dt, Math.sin(e.angle) * CONFIG.enemySpeed * dt, boxes, [p, ...f.enemies], bounds); const travelled = distance(before, e); guardFootsteps(e, travelled, boxes); if (travelled < .02) e.target = null; }
         }
       }
     }
